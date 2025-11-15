@@ -107,8 +107,6 @@
           </div>
         </div>
 
-        
-
         <!-- Remember & Forgot -->
         <div class="row between">
           <label class="remember">
@@ -123,12 +121,9 @@
 
         <!-- Error Message -->
         <div v-if="error" class="error">{{ error }}</div>
-        <InputText v-model="test" />
-
-        <Button
-          v-model="test"
-          :label="loading ? 'Ingresando...' : 'Iniciar Sesión'"
-        />
+        <button type="submit" class="custom-button" :disabled="loading">
+          {{ loading ? 'Ingresando...' : 'Iniciar Sesión' }}
+        </button>
       </form>
     </div>
   </div>
@@ -139,12 +134,10 @@ import { reactive, ref, onMounted, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "../store/useAuthStore";
 import type { LoginCredentials } from "../interfaces/auth.interface";
-import { InputText, Button } from "primevue";
 import logo from '../../../assets/hatubbus-logo.png'
 const router = useRouter();
 const route = useRoute();
 const auth = useAuthStore();
-const test = ref("");
 
 const form = reactive({
   email: "",
@@ -195,7 +188,13 @@ async function onSubmit() {
       password: form.password,
     };
 
+    // Intentar login; loginAction lanzará si la respuesta no contiene token
     await auth.loginAction(credentials);
+
+    // Asegurar que la tienda reporta autenticación antes de redirigir
+    if (!auth.isAuthenticated) {
+      throw new Error("No se pudo iniciar sesión con esas credenciales");
+    }
 
     const redirect = (route.query.redirect as string) || "/";
     await router.push(redirect);
@@ -208,7 +207,7 @@ async function onSubmit() {
 }
 
 function onForgot() {
-  alert("Funcionalidad de recuperar contraseña aún no implementada");
+  alert('Funcionalidad de recuperar contraseña aún no implementada')
 }
 
 function toggleDropdown() {
