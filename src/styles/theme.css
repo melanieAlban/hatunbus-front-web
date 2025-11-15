@@ -34,16 +34,6 @@
   --app-card-bg: var(--gray-light);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --app-bg: var(--black-soft);
-    --app-text: var(--beige-light);
-    --app-accent: var(--beige-light);
-    --app-input-bg: #2b2b2b;
-    --app-card-bg: #1f1f1f;
-  }
-}
-
 /* Utility classes that use the theme tokens */
 .btn-primary {
   background-color: var(--app-accent);

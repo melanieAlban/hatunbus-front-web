@@ -19,16 +19,25 @@
         <!-- Email Input -->
         <div class="input-group">
           <div class="input-icon-wrapper">
-            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-              <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+            <svg
+              class="input-icon"
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              fill="currentColor"
+              viewBox="0 0 16 16"
+            >
+              <path
+                d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"
+              />
             </svg>
-            <input 
-              id="email" 
-              v-model="form.email" 
-              type="text" 
-              placeholder="Correo electrónico" 
-              class="custom-input" 
-              required 
+            <input
+              id="email"
+              v-model="form.email"
+              type="text"
+              placeholder="Correo electrónico"
+              class="custom-input"
+              required
             />
           </div>
         </div>
@@ -36,26 +45,63 @@
         <!-- Password Input -->
         <div class="input-group">
           <div class="input-icon-wrapper">
-            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-              <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+            <svg
+              class="input-icon"
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              fill="currentColor"
+              viewBox="0 0 16 16"
+            >
+              <path
+                d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"
+              />
             </svg>
-            <input 
-              id="password" 
-              v-model="form.password" 
-              :type="showPassword ? 'text' : 'password'" 
-              placeholder="Contraseña" 
-              class="custom-input" 
-              required 
+            <input
+              id="password"
+              v-model="form.password"
+              :type="showPassword ? 'text' : 'password'"
+              placeholder="Contraseña"
+              class="custom-input"
+              required
             />
-            <button type="button" class="password-toggle" @click="showPassword = !showPassword">
-              <svg v-if="showPassword" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/>
-                <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
+            <button
+              type="button"
+              class="password-toggle"
+              @click="showPassword = !showPassword"
+            >
+              <svg
+                v-if="showPassword"
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                fill="currentColor"
+                viewBox="0 0 16 16"
+              >
+                <path
+                  d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"
+                />
+                <path
+                  d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"
+                />
               </svg>
-              <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                <path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.709z"/>
-                <path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/>
-                <path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12-.708.708z"/>
+              <svg
+                v-else
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                fill="currentColor"
+                viewBox="0 0 16 16"
+              >
+                <path
+                  d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.709z"
+                />
+                <path
+                  d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"
+                />
+                <path
+                  d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12-.708.708z"
+                />
               </svg>
             </button>
           </div>
@@ -70,102 +116,108 @@
             <span class="checkmark"></span>
             Recuérdame
           </label>
-          <a class="muted" href="#" @click.prevent="onForgot">¿Olvidaste tu contraseña?</a>
+          <a class="muted" href="#" @click.prevent="onForgot"
+            >¿Olvidaste tu contraseña?</a
+          >
         </div>
 
         <!-- Error Message -->
         <div v-if="error" class="error">{{ error }}</div>
+        <InputText v-model="test" />
 
-        <!-- Submit Button -->
-        <button type="submit" class="custom-button" :disabled="loading">
-          {{ loading ? 'Ingresando...' : 'Iniciar Sesión' }}
-        </button>
+        <Button
+          v-model="test"
+          :label="loading ? 'Ingresando...' : 'Iniciar Sesión'"
+        />
       </form>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted, computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { useAuthStore } from '../store/useAuthStore'
-import type { LoginCredentials } from '../interfaces/auth.interface'
+import { reactive, ref, onMounted, computed } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { useAuthStore } from "../store/useAuthStore";
+import type { LoginCredentials } from "../interfaces/auth.interface";
+import { InputText, Button } from "primevue";
 import logo from '../../../assets/hatubbus-logo.png'
-const router = useRouter()
-const route = useRoute()
-const auth = useAuthStore()
+const router = useRouter();
+const route = useRoute();
+const auth = useAuthStore();
+const test = ref("");
 
 const form = reactive({
-  email: '',
-  password: '',
-  role: 'CLIENT'
-})
+  email: "",
+  password: "",
+  role: "CLIENT",
+});
 
 const roles = [
-  { label: 'Usuario', value: 'CLIENT' },
-  { label: 'Conductor', value: 'DRIVER' },
-  { label: 'Empleado', value: 'CLERK' },
-  { label: 'Cooperativa', value: 'COOPERATIVE' },
-  { label: 'Administrador', value: 'ADMIN' },
-]
+  { label: "Usuario", value: "CLIENT" },
+  { label: "Conductor", value: "DRIVER" },
+  { label: "Empleado", value: "CLERK" },
+  { label: "Cooperativa", value: "COOPERATIVE" },
+  { label: "Administrador", value: "ADMIN" },
+];
 
-const remember = ref(false)
-const error = ref<string | null>(null)
-const loading = ref(false)
-const showPassword = ref(false)
-const dropdownOpen = ref(false)
+const remember = ref(false);
+const error = ref<string | null>(null);
+const loading = ref(false);
+const showPassword = ref(false);
+const dropdownOpen = ref(false);
 
 const selectedRoleLabel = computed(() => {
-  const selected = roles.find(role => role.value === form.role)
-  return selected ? selected.label : ''
-})
+  const selected = roles.find((role) => role.value === form.role);
+  return selected ? selected.label : "";
+});
 
 onMounted(() => {
   if (auth.isAuthenticated) {
-    router.push('/')
+    router.push("/");
   }
 
   // Cerrar dropdown al hacer clic fuera
-  document.addEventListener('click', (e) => {
-    const dropdown = document.querySelector('.custom-select-wrapper')
+  document.addEventListener("click", (e) => {
+    const dropdown = document.querySelector(".custom-select-wrapper");
     if (dropdown && !dropdown.contains(e.target as Node)) {
-      dropdownOpen.value = false
+      dropdownOpen.value = false;
     }
-  })
-})
+  });
+});
 
 async function onSubmit() {
-  error.value = null
-  loading.value = true
+  error.value = null;
+  loading.value = true;
 
   try {
     const credentials: LoginCredentials = {
       email: form.email,
-      password: form.password
-    }
+      password: form.password,
+    };
 
-    await auth.loginAction(credentials)
+    await auth.loginAction(credentials);
 
-    const redirect = (route.query.redirect as string) || '/'
-    await router.push(redirect)
+    const redirect = (route.query.redirect as string) || "/";
+    await router.push(redirect);
   } catch (e: any) {
-    error.value = e?.response?.data?.message || e?.message || 'Error al iniciar sesión'
+    error.value =
+      e?.response?.data?.message || e?.message || "Error al iniciar sesión";
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 function onForgot() {
-  alert('Funcionalidad de recuperar contraseña aún no implementada')
+  alert("Funcionalidad de recuperar contraseña aún no implementada");
 }
 
 function toggleDropdown() {
-  dropdownOpen.value = !dropdownOpen.value
+  dropdownOpen.value = !dropdownOpen.value;
 }
 
 function selectRole(role: any) {
-  form.role = role.value
-  dropdownOpen.value = false
+  form.role = role.value;
+  dropdownOpen.value = false;
 }
 </script>
 
@@ -373,7 +425,7 @@ function selectRole(role: any) {
 }
 
 .select-value:empty::before {
-  content: 'Selecciona rol';
+  content: "Selecciona rol";
   color: var(--gray-earth);
 }
 
@@ -600,22 +652,22 @@ function selectRole(role: any) {
   .login-card {
     background: var(--app-card-bg);
   }
-  
+
   .select-trigger {
     background: var(--app-input-bg);
     border-color: var(--gray-input);
   }
-  
+
   .select-dropdown {
     background: var(--app-input-bg);
     border-color: var(--gray-input);
   }
-  
+
   .custom-input {
     background: var(--app-input-bg);
     border-color: var(--gray-input);
   }
-  
+
   .checkmark {
     background: var(--app-input-bg);
   }
@@ -626,40 +678,40 @@ function selectRole(role: any) {
   .login-root {
     padding: 1.25rem;
   }
-  
+
   .login-card {
     max-width: 100%;
     padding: 1.5rem;
   }
-  
+
   .brand .logo {
     font-size: 2rem;
   }
-  
+
   .brand h1 {
     font-size: 1.4rem;
   }
-  
+
   .custom-input {
     padding: 0.625rem 0.625rem 0.625rem 2.25rem;
     min-height: 44px;
   }
-  
+
   .select-trigger {
     padding: 0.625rem 0.875rem;
     min-height: 44px;
   }
-  
+
   .custom-button {
     padding: 0.625rem 1.25rem;
   }
-  
+
   .row.between {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.75rem;
   }
-  
+
   .muted {
     align-self: flex-end;
   }
