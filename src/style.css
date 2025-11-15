@@ -89,7 +89,7 @@ button:focus-visible {
 /* App Container */
 #app {
   display: flex;
-  padding: 2rem;
+  padding: 0; /* removed global padding so layouts can span full viewport */
   width: 100%;
   height: 100%;
 }
