@@ -1,15 +1,18 @@
 <template>
   <div class="login-root">
     <div class="brand">
-      <div class="logo">🚌</div>
-      <h1>HatunBus</h1>
-      <p class="subtitle">Gestión y venta de boletos de autobús.</p>
-    </div>
+        <div class="logo">
+          <!-- Coloca tu imagen en la carpeta `public` como `logo.png` -->
+          <img :src="logo" alt="HatunBus" class="logo-img" />
+        </div>
+
+        <p class="subtitle">Gestión y venta de boletos de autobús.</p>
+      </div>
 
     <div class="card login-card">
       <div class="tabs">
         <button class="tab active">Iniciar Sesión</button>
-        <button class="tab">Registrarse</button>
+        <!-- <button class="tab">Registrarse</button> -->
       </div>
 
       <form @submit.prevent="onSubmit" class="form-body">
@@ -58,36 +61,7 @@
           </div>
         </div>
 
-        <!-- Role Dropdown -->
-        <label class="label">Selecciona tu rol</label>
-        <div class="input-group select-group">
-          <div class="custom-select-wrapper" :class="{ 'select-open': dropdownOpen }">
-            <div class="select-trigger" @click="toggleDropdown">
-              <span class="select-value">
-                {{ selectedRoleLabel || 'Selecciona rol' }}
-              </span>
-              <svg class="select-arrow" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M8 11L3 6h10l-5 5z"/>
-              </svg>
-            </div>
-            <transition name="dropdown">
-              <div v-if="dropdownOpen" class="select-dropdown">
-                <div 
-                  v-for="role in roles" 
-                  :key="role.value" 
-                  class="select-option" 
-                  :class="{ 'selected': form.role === role.value }" 
-                  @click="selectRole(role)"
-                >
-                  <span class="option-text">{{ role.label }}</span>
-                  <svg v-if="form.role === role.value" class="check-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                    <path d="M13.5 4.5l-7 7L3.5 9"/>
-                  </svg>
-                </div>
-              </div>
-            </transition>
-          </div>
-        </div>
+        
 
         <!-- Remember & Forgot -->
         <div class="row between">
@@ -116,7 +90,7 @@ import { reactive, ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../store/useAuthStore'
 import type { LoginCredentials } from '../interfaces/auth.interface'
-
+import logo from '../../../assets/hatubbus-logo.png'
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
@@ -201,33 +175,52 @@ function selectRole(role: any) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 1.5rem;
+  justify-content: flex-start;
+  /* Reducido para acercar el bloque de marca al formulario */
+  gap: 0.8rem;
   padding: 2rem;
   min-height: 100vh;
   width: 100vw;
   box-sizing: border-box;
   background: var(--app-bg, var(--beige-bone));
+  overflow: hidden;
+  
 }
 
 .brand {
   text-align: center;
+  /* Elevar ligeramente el bloque de marca (logo + subtítulo) */
+  transform: translateY(-20px);
+  margin-bottom: 0.5rem;
 }
 
 .brand .logo {
-  font-size: 2.25rem;
-  margin-bottom: 0.25rem;
+  /* Contenedor del logo: centra la imagen
+     Usamos una variable CSS --logo-size para poder ajustar fácilmente el tamaño */
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--app-accent);
+  margin-bottom: 0;
+  --logo-size: 150px; /* tamaño por defecto: cambia este valor si quieres otro */
+}
+
+.brand .logo .logo-img {
+  width: var(--logo-size);
+  height: var(--logo-size);
+  object-fit: contain;
+  display: block;
 }
 
 .brand h1 {
-  margin: 0;
+  margin: 0 0 0.05rem 0;
   color: var(--app-text);
   font-size: 1.6rem;
 }
 
 .brand .subtitle {
-  margin: 0.4rem 0 0;
+  /* Reducido para acercar el subtítulo al logo */
+  margin: 0.25rem 0 0;
   color: var(--gray-earth);
   font-size: 0.95rem;
 }
@@ -241,6 +234,7 @@ function selectRole(role: any) {
   border-radius: 12px;
   background: var(--card-bg, #ffffff);
   box-sizing: border-box;
+  position: relative;
 }
 
 .tabs {
@@ -668,6 +662,13 @@ function selectRole(role: any) {
   
   .muted {
     align-self: flex-end;
+  }
+}
+
+/* Ajuste responsive del tamaño del logo en pantallas pequeñas */
+@media (max-width: 520px) {
+  .brand .logo {
+    --logo-size: 48px; /* reduce el logo en móvil */
   }
 }
 </style>
