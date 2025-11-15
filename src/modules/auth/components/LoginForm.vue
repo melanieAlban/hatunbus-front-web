@@ -166,7 +166,7 @@ const selectedRoleLabel = computed(() => {
 
 onMounted(() => {
   if (auth.isAuthenticated) {
-    router.push("/");
+    router.push('/admin')
   }
 
   // Cerrar dropdown al hacer clic fuera
@@ -196,8 +196,10 @@ async function onSubmit() {
       throw new Error("No se pudo iniciar sesión con esas credenciales");
     }
 
-    const redirect = (route.query.redirect as string) || "/";
-    await router.push(redirect);
+    // Si hay un parámetro `redirect` lo respetamos (por ejemplo requests protegidas),
+    // si no, redirigimos al layout general del panel `/admin`.
+    const redirect = (route.query.redirect as string) || '/admin'
+    await router.push(redirect)
   } catch (e: any) {
     error.value =
       e?.response?.data?.message || e?.message || "Error al iniciar sesión";

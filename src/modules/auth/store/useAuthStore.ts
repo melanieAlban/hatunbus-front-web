@@ -18,7 +18,10 @@ export const useAuthStore = defineStore('auth', () => {
       throw new Error(message)
     }
     token.value = res.token
-    if (res.user) user.value = res.user
+    if (res.user) {
+      user.value = res.user
+      try { localStorage.setItem('auth_user', JSON.stringify(res.user)) } catch (e) { /* ignore */ }
+    }
     // Persistir token en apiClient y localStorage
     setAuthToken(token.value)
     return res
@@ -29,14 +32,25 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
     user.value = null
     setAuthToken(null)
+    try { localStorage.removeItem('auth_user') } catch (e) { /* ignore */ }
   }
 
   function restoreFromStorage() {
     try {
+      // Si ya tenemos token en memoria (por ejemplo después de login), no sobreescribimos
+      if (token.value) return
+
       const t = localStorage.getItem('auth_token')
       if (t) {
         token.value = t
         setAuthToken(t)
+        // Restaurar user desde storage local para no depender de /me
+        try {
+          const raw = localStorage.getItem('auth_user')
+          if (raw && !user.value) {
+            user.value = JSON.parse(raw) as UserDto
+          }
+        } catch (e) { /* ignore parse errors */ }
       }
     } catch (e) { /* ignore */ }
   }
