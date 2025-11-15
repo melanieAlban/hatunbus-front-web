@@ -5,195 +5,72 @@
             <h1>HatunBus</h1>
             <p class="subtitle">Gestión y venta de boletos de autobús.</p>
         </div>
-
         <div class="card login-card">
-            <div class="tabs">
-                <button class="tab active">Iniciar Sesión</button>
-                <button class="tab">Registrarse</button>
-            </div>
-
+            <div class="tabs"> <button class="tab active">Iniciar Sesión</button> <button
+                    class="tab">Registrarse</button> </div>
             <form @submit.prevent="onSubmit" class="form-body">
                 <div class="input-group">
-                    <div class="input-icon-wrapper">
-                        <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                            fill="currentColor" viewBox="0 0 16 16">
+                    <div class="input-icon-wrapper"> <svg class="input-icon" xmlns="http://www.w3.org/2000/svg"
+                            width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                             <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
-                        </svg>
-                        <input id="email" v-model="form.email" type="text" placeholder="Correo electrónico"
-                            class="custom-input" required />
-                    </div>
+                        </svg> <input id="email" v-model="form.email" type="text" placeholder="Correo electrónico"
+                            class="custom-input" required /> </div>
                 </div>
-
                 <div class="input-group">
-                    <div class="input-icon-wrapper">
-                        <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                            fill="currentColor" viewBox="0 0 16 16">
+                    <div class="input-icon-wrapper"> <svg class="input-icon" xmlns="http://www.w3.org/2000/svg"
+                            width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                             <path
                                 d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" />
-                        </svg>
-                        <input id="password" v-model="form.password" :type="showPassword ? 'text' : 'password'"
-                            placeholder="Contraseña" class="custom-input" required />
-                        <button type="button" class="password-toggle" @click="showPassword = !showPassword">
-                            <svg v-if="showPassword" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                fill="currentColor" viewBox="0 0 16 16">
+                        </svg> <input id="password" v-model="form.password" :type="showPassword ? 'text' : 'password'"
+                            placeholder="Contraseña" class="custom-input" required /> <button type="button"
+                            class="password-toggle" @click="showPassword = !showPassword"> <svg v-if="showPassword"
+                                xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                viewBox="0 0 16 16">
                                 <path
                                     d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z" />
                                 <path
                                     d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z" />
-                            </svg>
-                            <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                viewBox="0 0 16 16">
+                            </svg> <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                fill="currentColor" viewBox="0 0 16 16">
                                 <path
                                     d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.709z" />
                                 <path
                                     d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z" />
                                 <path
                                     d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12-.708.708z" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-
-                <label class="label">Selecciona tu rol</label>
+                            </svg> </button> </div>
+                </div> <label class="label">Selecciona tu rol</label>
                 <div class="input-group select-group">
                     <div class="custom-select-wrapper" :class="{ 'select-open': dropdownOpen }">
-                        <div class="select-trigger" @click="toggleDropdown">
-                            <span class="select-value">
-                                {{ selectedRoleLabel || 'Selecciona rol' }}
-                            </span>
-                            <svg class="select-arrow" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <div class="select-trigger" @click="toggleDropdown"> <span class="select-value"> {{
+                            selectedRoleLabel || 'Selecciona rol' }} </span> <svg class="select-arrow" width="16"
+                                height="16" viewBox="0 0 16 16" fill="currentColor">
                                 <path d="M8 11L3 6h10l-5 5z" />
-                            </svg>
-                        </div>
-
+                            </svg> </div>
                         <transition name="dropdown">
                             <div v-if="dropdownOpen" class="select-dropdown">
                                 <div v-for="role in roles" :key="role.value" class="select-option"
-                                    :class="{ 'selected': form.role === role.value }" @click="selectRole(role)">
-                                    <span class="option-text">{{ role.label }}</span>
-                                    <svg v-if="form.role === role.value" class="check-icon" width="16" height="16"
-                                        viewBox="0 0 16 16" fill="currentColor">
+                                    :class="{ 'selected': form.role === role.value }" @click="selectRole(role)"> <span
+                                        class="option-text">{{ role.label }}</span> <svg v-if="form.role === role.value"
+                                        class="check-icon" width="16" height="16" viewBox="0 0 16 16"
+                                        fill="currentColor">
                                         <path d="M13.5 4.5l-7 7L3.5 9" />
-                                    </svg>
-                                </div>
+                                    </svg> </div>
                             </div>
                         </transition>
                     </div>
                 </div>
-
-                <div class="row between">
-                    <label class="remember">
-                        <input type="checkbox" v-model="remember" class="custom-checkbox" />
-                        <span class="checkmark"></span>
-                        Recuérdame
-                    </label>
-                    <a class="muted" href="#" @click.prevent="onForgot">¿Olvidaste tu contraseña?</a>
-                </div>
-
-                <div v-if="error" class="error">{{ error }}</div>
-
-                <button type="submit" class="custom-button" :disabled="loading">
-                    {{ loading ? 'Ingresando...' : 'Iniciar Sesión' }}
-                </button>
+                <div class="row between"> <label class="remember"> <input type="checkbox" v-model="remember"
+                            class="custom-checkbox" /> <span class="checkmark"></span> Recuérdame </label> <a
+                        class="muted" href="#" @click.prevent="onForgot">¿Olvidaste tu contraseña?</a> </div>
+                <div v-if="error" class="error">{{ error }}</div> <button type="submit" class="custom-button"
+                    :disabled="loading"> {{ loading ? 'Ingresando...' : 'Iniciar Sesión' }} </button>
             </form>
         </div>
     </div>
 </template>
-
-<script setup lang="ts">
-import { reactive, ref, onMounted, computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { useAuthStore } from '../store/useAuthStore'
-import type { LoginCredentials } from '../interfaces/auth.interface'
-import Select from 'primevue/select'
-import Dropdown from 'primevue/dropdown'
-const router = useRouter()
-const route = useRoute()
-const auth = useAuthStore()
-
-const form = reactive({
-    email: '',
-    password: '',
-    role: 'CLIENT'
-})
-
-const roles = [
-    { label: 'Usuario', value: 'CLIENT' },
-    { label: 'Conductor', value: 'DRIVER' },
-    { label: 'Empleado', value: 'CLERK' },
-    { label: 'Cooperativa', value: 'COOPERATIVE' },
-    { label: 'Administrador', value: 'ADMIN' },
-]
-
-const remember = ref(false)
-const error = ref<string | null>(null)
-const loading = ref(false)
-const showPassword = ref(false)
-
-onMounted(() => {
-    if (auth.isAuthenticated) {
-        router.push('/')
-    }
-})
-
-async function onSubmit() {
-    error.value = null
-    loading.value = true
-
-    try {
-        const credentials: LoginCredentials = {
-            email: form.email,
-            password: form.password
-        }
-
-        await auth.loginAction(credentials)
-
-        const redirect = (route.query.redirect as string) || '/'
-        await router.push(redirect)
-    } catch (e: any) {
-        error.value = e?.response?.data?.message || e?.message || 'Error al iniciar sesión'
-    } finally {
-        loading.value = false
-    }
-}
-
-function onForgot() {
-    alert('Funcionalidad de recuperar contraseña aún no implementada')
-}
-
-function onRegister() {
-    router.push({ name: 'Register' }).catch(() => {
-        console.log('Register route not available')
-    })
-}
-
-const dropdownOpen = ref(false)
-
-const selectedRoleLabel = computed(() => {
-    const selected = roles.find(role => role.value === form.role)
-    return selected ? selected.label : ''
-})
-
-function toggleDropdown() {
-    dropdownOpen.value = !dropdownOpen.value
-}
-
-function selectRole(role: any) {
-    form.role = role.value
-    dropdownOpen.value = false
-}
-
-// Cerrar dropdown al hacer clic fuera
-onMounted(() => {
-    document.addEventListener('click', (e) => {
-        const dropdown = document.querySelector('.custom-select-wrapper')
-        if (dropdown && !dropdown.contains(e.target as Node)) {
-            dropdownOpen.value = false
-        }
-    })
-})
-</script>
-
+<script setup
+    lang="ts">    import { reactive, ref, onMounted, computed } from 'vue' import { useRouter, useRoute } from 'vue-router' import { useAuthStore } from '../store/useAuthStore' import type { LoginCredentials } from '../interfaces/auth.interface' import Select from 'primevue/select' import Dropdown from 'primevue/dropdown' const router = useRouter() const route = useRoute() const auth = useAuthStore() const form = reactive({ email: '', password: '', role: 'CLIENT' }) const roles = [{ label: 'Usuario', value: 'CLIENT' }, { label: 'Conductor', value: 'DRIVER' }, { label: 'Empleado', value: 'CLERK' }, { label: 'Cooperativa', value: 'COOPERATIVE' }, { label: 'Administrador', value: 'ADMIN' },] const remember = ref(false) const error = ref<string | null>(null) const loading = ref(false) const showPassword = ref(false) onMounted(() => { if (auth.isAuthenticated) { router.push('/') } }) async function onSubmit() { error.value = null loading.value = true try { const credentials: LoginCredentials = { email: form.email, password: form.password } await auth.loginAction(credentials) const redirect = (route.query.redirect as string) || '/' await router.push(redirect) } catch (e: any) { error.value = e?.response?.data?.message || e?.message || 'Error al iniciar sesión' } finally { loading.value = false } } function onForgot() { alert('Funcionalidad de recuperar contraseña aún no implementada') } function onRegister() { router.push({ name: 'Register' }).catch(() => { console.log('Register route not available') }) } const dropdownOpen = ref(false) const selectedRoleLabel = computed(() => { const selected = roles.find(role => role.value === form.role) return selected ? selected.label : '' }) function toggleDropdown() { dropdownOpen.value = !dropdownOpen.value } function selectRole(role: any) { form.role = role.value dropdownOpen.value = false } // Cerrar dropdown al hacer clic fuera onMounted(() => { document.addEventListener('click', (e) => { const dropdown = document.querySelector('.custom-select-wrapper') if (dropdown && !dropdown.contains(e.target as Node)) { dropdownOpen.value = false } }) }) </script>
 <style scoped>
 /* Root: occupy full viewport and center the card */
 .login-root {
@@ -335,43 +212,230 @@ onMounted(() => {
     outline: none !important;
 }
 
-.select-wrapper {
+.custom-select-wrapper {
     position: relative;
     width: 100%;
 }
 
-.custom-select {
+.select-trigger {
     width: 100%;
-    background: var(--beige-bone) !important;
-    border: 1px solid var(--gray-medium) !important;
-    color: var(--app-text) !important;
-    border-radius: 6px !important;
-    padding: 0.75rem 2.5rem 0.75rem 0.75rem !important;
-    transition: all 0.2s ease !important;
-    min-height: 48px !important;
+    background: var(--beige-bone);
+    border: 1px solid var(--gray-medium);
+    color: var(--app-text);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    min-height: 48px;
     font-size: 1rem;
-    appearance: none;
     box-sizing: border-box;
     cursor: pointer;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    backdrop-filter: blur(10px);
 }
 
-.custom-select:hover {
-    border-color: var(--app-accent) !important;
+.select-trigger:hover {
+    border-color: var(--earth-light);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(139, 115, 85, 0.1);
 }
 
-.custom-select:focus {
-    border-color: var(--app-accent) !important;
-    box-shadow: 0 0 0 1px var(--app-accent) !important;
-    outline: none !important;
+.custom-select-wrapper.select-open .select-trigger {
+    border-color: var(--app-accent);
+    box-shadow: 0 0 0 3px rgba(139, 115, 85, 0.15);
+    transform: translateY(-1px);
+}
+
+.select-value {
+    color: var(--app-text);
+    font-weight: 500;
+}
+
+.select-value:empty::before {
+    content: 'Selecciona rol';
+    color: var(--gray-earth);
+    font-weight: normal;
 }
 
 .select-arrow {
-    position: absolute;
-    right: 0.75rem;
-    top: 50%;
-    transform: translateY(-50%);
     color: var(--gray-earth);
-    pointer-events: none;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.custom-select-wrapper.select-open .select-arrow {
+    transform: rotate(180deg);
+    color: var(--app-accent);
+}
+
+/* DROPDOWN MODERNO */
+.select-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--beige-bone);
+    border: 1px solid var(--gray-medium);
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), 0 5px 10px rgba(0, 0, 0, 0.05);
+    margin-top: 8px;
+    z-index: 1000;
+    max-height: 280px;
+    overflow-y: auto;
+    backdrop-filter: blur(20px);
+    background: rgba(250, 248, 244, 0.95);
+}
+
+/* Animación de entrada */
+.dropdown-enter-active {
+    animation: dropdownSlide 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dropdown-leave-active {
+    animation: dropdownSlide 0.15s cubic-bezier(0.4, 0, 1, 1) reverse;
+}
+
+@keyframes dropdownSlide {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* OPCIONES MODERNAS */
+.select-option {
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    color: var(--app-text);
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+}
+
+.select-option::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--app-accent);
+    transform: scaleX(0);
+    transition: transform 0.2s ease;
+}
+
+.select-option:first-child {
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.select-option:last-child {
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+
+.select-option:hover {
+    background: linear-gradient(135deg, var(--earth-light) 0%, var(--app-accent) 100%);
+    color: var(--white-bone);
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(139, 115, 85, 0.3);
+}
+
+.select-option:hover::before {
+    transform: scaleX(1);
+}
+
+.select-option.selected {
+    background: var(--app-accent);
+    color: var(--white-bone);
+    font-weight: 600;
+}
+
+.select-option.selected::before {
+    transform: scaleX(1);
+}
+
+.option-text {
+    flex: 1;
+}
+
+.check-icon {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.select-option.selected .check-icon {
+    opacity: 1;
+}
+
+/* SCROLLBAR PERSONALIZADO */
+.select-dropdown::-webkit-scrollbar {
+    width: 6px;
+}
+
+.select-dropdown::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 3px;
+    margin: 8px 0;
+}
+
+.select-dropdown::-webkit-scrollbar-thumb {
+    background: var(--earth-light);
+    border-radius: 3px;
+    transition: background 0.2s ease;
+}
+
+.select-dropdown::-webkit-scrollbar-thumb:hover {
+    background: var(--app-accent);
+}
+
+/* MODO OSCURO */
+@media (prefers-color-scheme: dark) {
+    .select-trigger {
+        background: var(--app-input-bg);
+        border-color: var(--gray-input);
+        color: var(--app-text);
+    }
+
+    .select-dropdown {
+        background: rgba(43, 43, 43, 0.95);
+        border-color: var(--gray-input);
+        backdrop-filter: blur(20px);
+    }
+
+    .select-value:empty::before {
+        color: var(--gray-earth-light);
+    }
+}
+
+/* MOBILE */
+@media (max-width: 520px) {
+    .select-trigger {
+        padding: 0.625rem 0.875rem;
+        min-height: 44px;
+        font-size: 0.95rem;
+    }
+
+    .select-option {
+        padding: 12px 14px;
+        font-size: 0.9rem;
+    }
+
+    .select-dropdown {
+        border-radius: 10px;
+        margin-top: 6px;
+    }
 }
 
 .row.between {
@@ -537,296 +601,5 @@ onMounted(() => {
     .select-arrow {
         right: 0.625rem;
     }
-}
-
-.custom-select-wrapper {
-    position: relative;
-    width: 100%;
-}
-
-.select-trigger {
-    width: 100%;
-    background: var(--beige-bone);
-    border: 1px solid var(--gray-medium);
-    color: var(--app-text);
-    border-radius: 8px;
-    padding: 0.75rem 1rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    min-height: 48px;
-    font-size: 1rem;
-    box-sizing: border-box;
-    cursor: pointer;
-    font-family: inherit;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: relative;
-}
-
-.select-trigger:hover {
-    border-color: var(--earth-light);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(139, 115, 85, 0.1);
-}
-
-.custom-select-wrapper.select-open .select-trigger {
-    border-color: var(--app-accent);
-    box-shadow: 0 0 0 3px rgba(139, 115, 85, 0.15);
-    transform: translateY(-1px);
-}
-
-.select-value {
-    color: var(--app-text);
-    font-weight: 500;
-}
-
-.select-value:empty::before {
-    content: 'Selecciona rol';
-    color: var(--gray-earth);
-    font-weight: normal;
-}
-
-.select-arrow {
-    color: var(--gray-earth);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.custom-select-wrapper.select-open .select-arrow {
-    transform: rotate(180deg);
-    color: var(--app-accent);
-}
-
-/* DROPDOWN MODERNO */
-.select-dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: var(--beige-bone);
-    border: 1px solid var(--gray-medium);
-    border-radius: 12px;
-    box-shadow: 
-        0 20px 40px rgba(0, 0, 0, 0.15),
-        0 10px 20px rgba(0, 0, 0, 0.1);
-    margin-top: 8px;
-    z-index: 1000;
-    max-height: 280px;
-    overflow-y: auto;
-    backdrop-filter: blur(20px);
-    background: rgba(250, 248, 244, 0.98);
-    border: 1px solid rgba(139, 115, 85, 0.2);
-}
-
-/* Animación de entrada */
-.dropdown-enter-active {
-    animation: dropdownSlide 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.dropdown-leave-active {
-    animation: dropdownSlide 0.15s cubic-bezier(0.4, 0, 1, 1) reverse;
-}
-
-@keyframes dropdownSlide {
-    from {
-        opacity: 0;
-        transform: translateY(-12px) scale(0.95);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
-
-/* OPCIONES MODERNAS */
-.select-option {
-    padding: 14px 20px;
-    cursor: pointer;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    color: var(--app-text);
-    font-size: 0.95rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: relative;
-    overflow: hidden;
-    border-bottom: 1px solid rgba(139, 115, 85, 0.1);
-}
-
-.select-option:last-child {
-    border-bottom: none;
-}
-
-.select-option::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    background: linear-gradient(135deg, var(--earth-light), var(--app-accent));
-    transform: scaleX(0);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    border-radius: 0 2px 2px 0;
-}
-
-.select-option:first-child {
-    border-top-left-radius: 12px;
-    border-top-right-radius: 12px;
-}
-
-.select-option:last-child {
-    border-bottom-left-radius: 12px;
-    border-bottom-right-radius: 12px;
-}
-
-.select-option:hover {
-    background: linear-gradient(135deg, var(--earth-light) 0%, var(--app-accent) 100%);
-    color: var(--white-bone);
-    transform: translateX(8px);
-    box-shadow: 0 4px 15px rgba(139, 115, 85, 0.3);
-}
-
-.select-option:hover::before {
-    transform: scaleX(1);
-}
-
-.select-option.selected {
-    background: var(--app-accent);
-    color: var(--white-bone);
-    font-weight: 600;
-    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.select-option.selected::before {
-    transform: scaleX(1);
-    background: var(--white-bone);
-}
-
-.option-text {
-    flex: 1;
-    font-weight: 500;
-    letter-spacing: 0.2px;
-}
-
-.check-icon {
-    opacity: 0;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    transform: scale(0.8);
-}
-
-.select-option.selected .check-icon {
-    opacity: 1;
-    transform: scale(1);
-}
-
-.select-option:hover .check-icon {
-    transform: scale(1.1);
-}
-
-/* SCROLLBAR PERSONALIZADO MODERNO */
-.select-dropdown::-webkit-scrollbar {
-    width: 8px;
-}
-
-.select-dropdown::-webkit-scrollbar-track {
-    background: transparent;
-    border-radius: 4px;
-    margin: 12px 0;
-}
-
-.select-dropdown::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, var(--earth-light), var(--app-accent));
-    border-radius: 4px;
-    transition: all 0.3s ease;
-    border: 2px solid transparent;
-    background-clip: padding-box;
-}
-
-.select-dropdown::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, var(--app-accent), var(--earth-dark));
-    transform: scale(1.1);
-}
-
-/* EFECTO DE FONDO DIFUMINADO */
-.select-dropdown::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(
-        135deg,
-        rgba(250, 248, 244, 0.95) 0%,
-        rgba(245, 241, 235, 0.98) 100%
-    );
-    border-radius: 12px;
-    z-index: -1;
-}
-
-/* MODO OSCURO */
-@media (prefers-color-scheme: dark) {
-    .select-trigger {
-        background: var(--app-input-bg);
-        border-color: var(--gray-input);
-        color: var(--app-text);
-    }
-    
-    .select-dropdown {
-        background: rgba(43, 43, 43, 0.98);
-        border-color: rgba(139, 115, 85, 0.3);
-        backdrop-filter: blur(20px);
-    }
-    
-    .select-dropdown::before {
-        background: linear-gradient(
-            135deg,
-            rgba(43, 43, 43, 0.95) 0%,
-            rgba(31, 31, 31, 0.98) 100%
-        );
-    }
-    
-    .select-value:empty::before {
-        color: var(--gray-earth-light);
-    }
-    
-    .select-option {
-        border-bottom-color: rgba(139, 115, 85, 0.2);
-        color: var(--app-text);
-    }
-    
-    .select-option:hover {
-        background: linear-gradient(135deg, var(--earth-light) 0%, var(--app-accent) 100%);
-        color: var(--white-bone);
-    }
-}
-
-/* MOBILE RESPONSIVE */
-@media (max-width: 520px) {
-    .select-trigger {
-        padding: 0.625rem 0.875rem;
-        min-height: 44px;
-        font-size: 0.95rem;
-    }
-    
-    .select-option {
-        padding: 12px 16px;
-        font-size: 0.9rem;
-    }
-    
-    .select-dropdown {
-        border-radius: 10px;
-        margin-top: 6px;
-        max-height: 240px;
-    }
-    
-    .select-option:hover {
-        transform: translateX(4px);
-    }
-}
-
-/* QUITAR ESTILOS POR DEFECTO DEL SELECT NATIVO */
-.custom-select-wrapper select {
-    display: none;
 }
 </style>
