@@ -12,9 +12,16 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function loginAction(credentials: LoginCredentials) {
     const res = await authLogin(credentials)
-    token.value = res.token || null
+    // Si backend no devuelve token consideramos credenciales inválidas
+    if (!res || !(res as any).token) {
+      const message = (res as any)?.message || 'Credenciales inválidas'
+      throw new Error(message)
+    }
+    token.value = res.token
     if (res.user) user.value = res.user
-    if (token.value) setAuthToken(token.value)
+    // Persistir token en apiClient y localStorage
+    setAuthToken(token.value)
+    return res
   }
 
   async function logoutAction() {
