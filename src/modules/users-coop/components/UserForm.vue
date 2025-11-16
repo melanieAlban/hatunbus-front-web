@@ -56,8 +56,10 @@
               maxlength="10" 
               placeholder="Ingrese la cédula"
               class="w-full"
+              :disabled="!isCreate"
             />
             <small v-if="errors.idCard" class="p-error">{{ errors.idCard }}</small>
+            <small v-else-if="!isCreate" class="p-help">La cédula no puede editarse desde aquí.</small>
           </div>
 
           <div class="form-group">
@@ -133,6 +135,7 @@
               placeholder="Seleccionar rol"
               :class="{ 'p-invalid': errors.role }"
               class="w-full"
+              :disabled="!!fixedRole"
             />
             <small v-if="errors.role" class="p-error">{{ errors.role }}</small>
           </div>
@@ -157,7 +160,39 @@
           </div>
         </div>
 
-        <!-- Fila 5: Fecha de Nacimiento y Género -->
+        <!-- Campos de conductor: licencia y tipos (solo cuando corresponde) -->
+        <div class="form-row" v-if="includeDriverFields || modelLocal.role === 'DRIVER' || fixedRole === 'DRIVER'">
+          <div class="form-group">
+            <label class="p-label">Número de Licencia *</label>
+            <InputText
+              v-model="modelLocal.licenseNumber"
+              :class="{ 'p-invalid': errors.licenseNumber }"
+              maxlength="20"
+              placeholder="Ingrese número de licencia"
+              class="w-full"
+            />
+            <small v-if="errors.licenseNumber" class="p-error">{{ errors.licenseNumber }}</small>
+          </div>
+
+          <div class="form-group">
+            <label class="p-label">Tipo de Licencia</label>
+            <Dropdown v-model="modelLocal.licenseType" :options="licenseTypeOptions" optionLabel="label" optionValue="value" placeholder="Seleccione" class="w-full" />
+          </div>
+        </div>
+
+        <div class="form-row" v-if="includeDriverFields || modelLocal.role === 'DRIVER' || fixedRole === 'DRIVER'">
+          <div class="form-group">
+            <label class="p-label">Fecha de Emisión</label>
+            <Calendar v-model="modelLocal.issueDate" dateFormat="yy-mm-dd" showIcon placeholder="Seleccionar fecha" class="w-full" />
+          </div>
+
+          <div class="form-group">
+            <label class="p-label">Fecha de Vencimiento</label>
+            <Calendar v-model="modelLocal.expirationDate" dateFormat="yy-mm-dd" showIcon placeholder="Seleccionar fecha" class="w-full" />
+          </div>
+        </div>
+
+        <!-- Fila 5: Fecha de Nacimiento y Género/Cooperativa -->
         <div class="form-row">
           <div class="form-group">
             <label class="p-label">Fecha de Nacimiento</label>
@@ -403,10 +438,18 @@ const props = defineProps<{
   visible?: boolean; 
   model?: UserCoopDto | null;
   loading?: boolean;
+  // Opcional: restringir los roles mostrados en el dropdown
+  allowedRoles?: Array<{ label: string; value: string }>,
+  // Si este prop viene, fijar el rol (p. ej. 'DRIVER') y deshabilitar selección
+  fixedRole?: string | null,
+  // Cuando true, mostrar campos relacionados al conductor (licencia, fechas)
+  includeDriverFields?: boolean,
+  // Si se conoce, pasar cooperativeId para prellenar el driver
+  cooperativeId?: string | null,
 }>()
 
 const emit = defineEmits<{
-  (e: 'submit', payload: CreateUserPayload | UpdateUserPayload): void
+  (e: 'submit', payload: any): void
   (e: 'cancel'): void
   (e: 'update:visible', v: boolean): void
 }>()
@@ -426,6 +469,13 @@ const roleOptions = computed(() => {
     ]
   }
 
+const defaultRoleOptions = [
+  { label: 'Cliente', value: 'CLIENT' },
+  { label: 'Oficinista', value: 'CLERK' },
+  { label: 'Administrador', value: 'ADMIN' },
+  { label: 'Cooperativa', value: 'COOPERATIVE' },
+  { label: 'Conductor', value: 'DRIVER' }
+]
   // Para ADMIN, mostrar todos los roles
   return [
     { label: 'Cliente', value: 'CLIENT' },
@@ -434,6 +484,14 @@ const roleOptions = computed(() => {
     { label: 'Administrador', value: 'ADMIN' },
     { label: 'Cooperativa', value: 'COOPERATIVE' }
   ]
+})
+
+const roleOptions = computed(() => {
+  // Si el padre pasa `allowedRoles`, usar esa lista (útil para vistas como conductores)
+  if (props.allowedRoles && Array.isArray(props.allowedRoles) && props.allowedRoles.length > 0) {
+    return props.allowedRoles
+  }
+  return defaultRoleOptions
 })
 
 const genderOptions = [
@@ -472,13 +530,20 @@ const modelLocal = reactive<any>({
   profilePhoto: null,
   cooperativeId: null,
   active: true,
-  // Driver-specific fields
-  licenseNumber: null,
+  // Campos de conductor (opcionales, se muestran con includeDriverFields)
+  licenseNumber: '',
   licenseType: null,
-  licenseExpiry: null,
+  issueDate: null,
+  expirationDate: null,
 })
 
 const errors = reactive<any>({})
+
+const licenseTypeOptions = [
+  { label: 'C', value: 'C' },
+  { label: 'D', value: 'D' },
+  { label: 'E', value: 'E' },
+]
 
 // Generar contraseña automática de 8 caracteres
 function generatePassword() {
@@ -538,17 +603,31 @@ watch(() => props.model, (v) => {
     modelLocal.birthDate = v.birthDate ? new Date(v.birthDate) : null
     modelLocal.gender = v.gender || null
     modelLocal.profilePhoto = v.profilePhoto || null
-    modelLocal.cooperativeId = v.cooperativeId || null
-    modelLocal.active = typeof v.active === 'boolean' ? v.active : true
-    modelLocal.password = ''
-    // Driver-specific fields
-    modelLocal.licenseNumber = v.licenseNumber || null
-    modelLocal.licenseType = v.licenseType || null
-    modelLocal.licenseExpiry = v.licenseExpiry ? new Date(v.licenseExpiry) : null
+      modelLocal.cooperativeId = v.cooperativeId || null
+      modelLocal.active = typeof v.active === 'boolean' ? v.active : true
+      modelLocal.password = ''
+      // if parent forced role, keep it
+      if (props.fixedRole) {
+        modelLocal.role = props.fixedRole
+      }
+      // Copiar campos de conductor si vienen en el modelo (editar conductor)
+      const vm: any = v as any
+      if (vm.licenseNumber) modelLocal.licenseNumber = vm.licenseNumber
+      if (vm.licenseType) modelLocal.licenseType = vm.licenseType
+      if (vm.issueDate) modelLocal.issueDate = vm.issueDate ? new Date(vm.issueDate) : null
+      if (vm.expirationDate) modelLocal.expirationDate = vm.expirationDate ? new Date(vm.expirationDate) : null
   } else {
     resetForm()
   }
 }, { immediate: true })
+
+  // Si se pasa cooperativeId o fixedRole como prop, aplicarlos al formulario inicial
+  if (props.cooperativeId) {
+    modelLocal.cooperativeId = props.cooperativeId
+  }
+  if (props.fixedRole) {
+    modelLocal.role = props.fixedRole
+  }
 
 function resetForm() {
   modelLocal.firstNames = ''
@@ -653,6 +732,13 @@ function validate(): boolean {
     isValid = false
   }
 
+  // Validación de campos de conductor si se solicitan
+  const isDriverForm = props.includeDriverFields || modelLocal.role === 'DRIVER' || props.fixedRole === 'DRIVER'
+  if (isDriverForm) {
+    if (!modelLocal.licenseNumber || !modelLocal.licenseNumber.trim()) {
+      errors.licenseNumber = 'El número de licencia es obligatorio'
+      isValid = false
+    }
   // Driver license validation (only when creating a driver)
   if (modelLocal.role === 'DRIVER') {
     if (!modelLocal.licenseNumber?.trim()) {
@@ -712,10 +798,21 @@ function toCreatePayload() : CreateUserPayload {
   return payload
 }
 
+function buildDriverPayload() {
+  return {
+    licenseNumber: modelLocal.licenseNumber?.trim() || null,
+    licenseType: modelLocal.licenseType || null,
+    issueDate: modelLocal.issueDate ? modelLocal.issueDate.toISOString().split('T')[0] : null,
+    expirationDate: modelLocal.expirationDate ? modelLocal.expirationDate.toISOString().split('T')[0] : null,
+    cooperativeId: props.cooperativeId || modelLocal.cooperativeId || null,
+  }
+}
+
 function toUpdatePayload() : UpdateUserPayload {
   const payload: UpdateUserPayload = {
     firstNames: modelLocal.firstNames?.trim() || undefined,
     lastNames: modelLocal.lastNames?.trim() || undefined,
+    idCard: modelLocal.idCard?.trim() || undefined,
     email: modelLocal.email?.trim() || null,
     phone: modelLocal.phone?.trim() || null,
     birthDate: modelLocal.birthDate ? modelLocal.birthDate.toISOString().split('T')[0] : null,
@@ -736,11 +833,21 @@ function toUpdatePayload() : UpdateUserPayload {
 
 function onSubmit() {
   if (!validate()) return
-  
+
   if (isCreate.value) {
-    emit('submit', toCreatePayload())
+    if (props.includeDriverFields || props.fixedRole === 'DRIVER') {
+      // Emitir objeto combinado: { user, driver }
+      emit('submit', { user: toCreatePayload(), driver: buildDriverPayload() })
+    } else {
+      emit('submit', toCreatePayload())
+    }
   } else {
-    emit('submit', toUpdatePayload())
+    // Para actualización, emitir payload de usuario; si hay campos de conductor, incluirlos también
+    if (props.includeDriverFields || props.fixedRole === 'DRIVER') {
+      emit('submit', { user: toUpdatePayload(), driver: buildDriverPayload() })
+    } else {
+      emit('submit', toUpdatePayload())
+    }
   }
 }
 </script>
