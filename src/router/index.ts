@@ -24,7 +24,7 @@ const routes: RouteRecordRaw[] = [
     children: [
       { path: '', name: 'AdminDashboard', component: () => import('../modules/admin/views/DashboardView.vue'), meta: { requiresAuth: true, roles: ['ADMIN','COOPERATIVE'] } },
       { path: 'cooperatives', name: 'AdminCooperatives', component: () => import('../modules/cooperatives/views/CooperativesView.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
-      { path: 'users', name: 'AdminUsers', component: () => import('../modules/admin/views/UsersView.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
+      { path: 'users', name: 'AdminUsers', component: () => import('../modules/users-coop/views/UsersCoopView.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
       { path: 'roles', name: 'AdminRoles', component: () => import('../modules/admin/views/RolesView.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
       { path: 'reports', name: 'AdminReports', component: () => import('../modules/admin/views/ReportsView.vue'), meta: { requiresAuth: true, roles: ['ADMIN','COOPERATIVE'] } },
       { path: 'frequencies', name: 'AdminFrequencies', component: () => import('../modules/admin/views/FrequenciesView.vue'), meta: { requiresAuth: true, roles: ['COOPERATIVE'] } },
@@ -61,10 +61,8 @@ router.beforeEach(async (to: RouteLocationNormalized, _from: RouteLocationNormal
   }
 
   if (requiredRoles.length > 0) {
-    const rawRole = (auth.user as any)?.role
-    const role = rawRole ? String(rawRole).toUpperCase() : null
-    const normalized = requiredRoles.map(r => String(r).toUpperCase())
-    if (!role || !normalized.includes(role)) {
+    const role = (auth.user as any)?.role
+    if (!role || !requiredRoles.includes(role)) {
       return next({ name: 'Forbidden' })
     }
   }
