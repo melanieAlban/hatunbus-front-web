@@ -40,6 +40,7 @@ export interface CreateUserPayload {
 export interface UpdateUserPayload {
   firstNames?: string
   lastNames?: string
+  idCard?: string
   email?: string | null
   phone?: string | null
   birthDate?: string | null
