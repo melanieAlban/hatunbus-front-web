@@ -23,7 +23,7 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
     children: [
       { path: '', name: 'AdminDashboard', component: () => import('../modules/admin/views/DashboardView.vue'), meta: { requiresAuth: true, roles: ['ADMIN','COOPERATIVE'] } },
-      { path: 'cooperatives', name: 'AdminCooperatives', component: () => import('../modules/admin/views/CooperativesView.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
+      { path: 'cooperatives', name: 'AdminCooperatives', component: () => import('../modules/cooperatives/views/CooperativesView.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
       { path: 'users', name: 'AdminUsers', component: () => import('../modules/admin/views/UsersView.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
       { path: 'roles', name: 'AdminRoles', component: () => import('../modules/admin/views/RolesView.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
       { path: 'reports', name: 'AdminReports', component: () => import('../modules/admin/views/ReportsView.vue'), meta: { requiresAuth: true, roles: ['ADMIN','COOPERATIVE'] } },
@@ -61,8 +61,10 @@ router.beforeEach(async (to: RouteLocationNormalized, _from: RouteLocationNormal
   }
 
   if (requiredRoles.length > 0) {
-    const role = (auth.user as any)?.role
-    if (!role || !requiredRoles.includes(role)) {
+    const rawRole = (auth.user as any)?.role
+    const role = rawRole ? String(rawRole).toUpperCase() : null
+    const normalized = requiredRoles.map(r => String(r).toUpperCase())
+    if (!role || !normalized.includes(role)) {
       return next({ name: 'Forbidden' })
     }
   }
