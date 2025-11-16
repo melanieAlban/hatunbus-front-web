@@ -1,6 +1,11 @@
 <template>
   <router-view />
+  <Notifier />
 </template>
+
+<script setup>
+import Notifier from './components/ui/Notifier.vue'
+</script>
 
 <style>
 #app-root {

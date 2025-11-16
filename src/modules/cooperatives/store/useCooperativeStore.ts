@@ -80,7 +80,8 @@ export const useCooperativeStore = defineStore('cooperatives', () => {
     loading.value = true
     error.value = null
     try {
-      const updated = await service.updateCooperative(id, payload)
+      // Use multipart update to match backend that expects multipart/form-data
+      const updated = await service.updateCooperativeMultipart(id, payload)
       const idx = items.value.findIndex(i => i.id === id)
       if (idx >= 0) items.value.splice(idx, 1, updated)
       return updated
@@ -98,7 +99,14 @@ export const useCooperativeStore = defineStore('cooperatives', () => {
     try {
       const updated = await service.updateCooperativeMultipart(id, payload, file)
       const idx = items.value.findIndex(i => i.id === id)
-      if (idx >= 0) items.value.splice(idx, 1, updated)
+      if (idx >= 0) {
+        // Replace with server response
+        items.value.splice(idx, 1, updated)
+        // If the payload contained an explicit `active` value, prefer it in the UI
+        if (typeof payload.active !== 'undefined') {
+          items.value[idx].active = Boolean(payload.active)
+        }
+      }
       return updated
     } catch (e: any) {
       error.value = e?.response?.data?.message || e?.message || 'Error actualizando cooperativa (multipart)'

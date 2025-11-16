@@ -35,13 +35,15 @@ export async function createCooperativeMultipart(payload: CreateCooperativePaylo
   const blob = new Blob([JSON.stringify(dtoWithoutLogo)], { type: 'application/json' })
   form.append('data', blob, 'data.json')
   
+  // Debug: log the JSON part we're sending
+  try { console.log('[cooperativeService] create multipart payload:', dtoWithoutLogo, 'file:', !!file) } catch(e){}
+
   if (file) {
     form.append('logo', file) // Solo el archivo binario
   }
   
-  const res = await apiClient.post(`${BASE}`, form, { 
-    headers: { 'Content-Type': undefined } 
-  })
+  // Let axios/browser set the Content-Type (boundary) automatically
+  const res = await apiClient.post(`${BASE}`, form)
   return res.data as CooperativeDto
 }
 export async function updateCooperativeMultipart(id: string, payload: UpdateCooperativePayload, file?: File): Promise<CooperativeDto> {
@@ -50,13 +52,15 @@ export async function updateCooperativeMultipart(id: string, payload: UpdateCoop
   const blob = new Blob([JSON.stringify(dtoWithoutLogo)], { type: 'application/json' })
   form.append('data', blob, 'data.json')
   
+  // Debug: log the JSON part we're sending
+  try { console.log('[cooperativeService] update multipart payload:', dtoWithoutLogo, 'file:', !!file) } catch(e){}
+
   if (file) {
     form.append('logo', file)
   }
   
-  const res = await apiClient.put(`${BASE}/${id}`, form, { 
-    headers: { 'Content-Type': undefined } 
-  })
+  // Let axios/browser set the Content-Type (boundary) automatically
+  const res = await apiClient.put(`${BASE}/${id}`, form)
   return res.data as CooperativeDto
 }
 
