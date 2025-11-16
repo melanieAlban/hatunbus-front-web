@@ -2,7 +2,7 @@
   <div class="users-view">
     <header class="page-header">
       <div class="header-left">
-        <h2>Usuarios de Cooperativas</h2>
+        <h2>Usuarios</h2>
         <input class="search" v-model="query" placeholder="Buscar usuario..." />
       </div>
       <div class="header-right">

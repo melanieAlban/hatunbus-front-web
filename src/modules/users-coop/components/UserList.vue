@@ -72,7 +72,7 @@
                                 </div>
                             </td>
                             <td class="table-cell role-cell">
-                                <span class="role-text">{{ u.role || '-' }}</span>
+                                <span class="role-text">{{ translateRole(u.role) || '-' }}</span>
                             </td>
                             <td class="table-cell state-cell">
                                 <span :class="['status-badge', u.active ? 'status-active' : 'status-inactive']">
@@ -102,7 +102,6 @@
                 <!-- Estado vacío -->
                 <div v-if="filteredUsers.length === 0" class="empty-state">
                     <i class="pi pi-users empty-icon"></i>
-                    <h3 class="empty-title">No se encontraron usuarios</h3>
                     <p class="empty-description">
                         {{ hasActiveFilters ? 'Intenta con otros filtros' : 'No hay usuarios registrados' }}
                     </p>
@@ -182,16 +181,32 @@ const filters = ref({
     active: null
 })
 
-// Opciones para dropdowns
+// Opciones para dropdowns con traducción de roles
+const roleTranslations: Record<string, string> = {
+    'CLIENT': 'Cliente',
+    'ADMIN': 'Admin',
+    'DRIVER': 'Conductor',
+    'CLERK': 'Oficinista',
+    'COOPERATIVE': 'Cooperativa'
+}
+
 const roleOptions = computed(() => {
     const roles = new Set(store.items?.map(item => item.role).filter(Boolean))
-    return Array.from(roles).map(role => ({ label: role, value: role }))
+    return Array.from(roles).map(role => ({ 
+        label: roleTranslations[role] || role, 
+        value: role 
+    }))
 })
 
 const statusOptions = ref([
     { label: 'Activo', value: true },
     { label: 'Inactivo', value: false }
 ])
+
+// Función helper para traducir roles
+const translateRole = (role: string) => {
+    return roleTranslations[role] || role
+}
 
 // Paginación
 const currentPage = ref(1)
