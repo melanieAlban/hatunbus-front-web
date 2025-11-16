@@ -36,6 +36,7 @@ import CooperativeList from '../components/CooperativeList.vue'
 import CooperativeForm from '../components/CooperativeForm.vue'
 import { useCooperativeStore } from '../store/useCooperativeStore'
 import * as service from '../services/cooperativeService'
+import { confirm, success, error as notifyError } from '../../../lib/notifier'
 
 const store = useCooperativeStore()
 const query = ref('')
@@ -61,9 +62,11 @@ async function create(payload: any, file?: File) {
       await store.create(payload)
     }
     showCreate.value = false
+    success('Cooperativa creada', payload.name || '')
   } catch (e) {
     console.error('[CooperativesView] create error:', e)
-    // manejar error (toast o similar)
+    const err: any = e
+    notifyError('Error', err?.response?.data?.message || err?.message || 'Error creando cooperativa')
   }
 }
 
@@ -84,12 +87,23 @@ async function update(payload: any, file?: File) {
       await store.update(editing.value.id, payload)
     }
     editing.value = null
-  } catch (e) {}
+    success('Cooperativa actualizada', payload.name || '')
+  } catch (e) {
+    const err: any = e
+    notifyError('Error', err?.response?.data?.message || err?.message || 'Error actualizando cooperativa')
+  }
 }
 
 async function onDelete(item: any) {
-  if (!confirm('Eliminar cooperativa?')) return
-  try { await store.remove(item.id) } catch (e) {}
+  const ok = await confirm({ title: 'Eliminar cooperativa', message: `¿Eliminar ${item.name}?`, acceptLabel: 'Eliminar', rejectLabel: 'Cancelar' })
+  if (!ok) return
+  try {
+    await store.remove(item.id)
+    success('Cooperativa eliminada', item.name || '')
+  } catch (e) {
+    const err: any = e
+    notifyError('Error eliminando', err?.response?.data?.message || err?.message || 'No se pudo eliminar')
+  }
 }
 
 const userAvatar = computed(() => null)

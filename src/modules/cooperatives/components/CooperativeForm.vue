@@ -1,5 +1,15 @@
 <template>
-  <Dialog :visible="visibleLocal" modal :style="{ width: '720px', borderRadius: '12px' }" @hide="onHide">
+ <Dialog 
+  ref="dialogRef"
+  :visible="visibleLocal" 
+  modal 
+  :closable="true" 
+  :closeOnEscape="true"
+  :dismissableMask="true"
+  :style="{ width: '720px', borderRadius: '12px' }" 
+  @hide="onHide"
+  @update:visible="onVisibleChange"
+>
     <template #header>
       <div class="dialog-header">
         <h3>{{ title }}</h3>
@@ -77,7 +87,7 @@
       </div>
 
       <div class="card small">
-        <Checkbox v-model="form.active" binary /> <label style="margin-left:8px">Activa</label>
+        <Checkbox v-model="form.active" :binary="true" /> <label style="margin-left:8px">Activa</label>
       </div>
 
       <div class="form-actions">
@@ -97,6 +107,7 @@ import FileUpload from 'primevue/fileupload'
 import ColorPicker from 'primevue/colorpicker'
 import Checkbox from 'primevue/checkbox'
 import type { CreateCooperativePayload, CooperativeDto } from '../interfaces/cooperative.interface'
+import { onMounted, onBeforeUnmount } from 'vue'
 
 const props = defineProps<{ model?: CooperativeDto; visible?: boolean }>()
 // Emit payload and optionally the original File when present (for multipart uploads)
@@ -107,13 +118,26 @@ const emit = defineEmits<{
 }>()
 
 const visibleLocal = ref<boolean>(!!props.visible)
-watch(() => props.visible, v => (visibleLocal.value = !!v))
-watch(visibleLocal, v => emit('update:visible', v))
+watch(() => props.visible, v => {
+  visibleLocal.value = !!v
+})
+
+watch(visibleLocal, v => {
+  emit('update:visible', v)
+})
+
+function onVisibleChange(value: boolean) {
+  visibleLocal.value = value
+  if (!value) {
+    onHide()
+  }
+}
 
 const title = computed(() => (props.model ? 'Editar Cooperativa' : 'Crear Nueva Cooperativa'))
 
 const logoPreview = ref<string | null>(props.model?.logo || null)
 const logoFile = ref<File | null>(null)
+const dialogRef = ref<any>(null)
 
 const form = reactive<CreateCooperativePayload>({
   name: props.model?.name || '',
@@ -124,12 +148,17 @@ const form = reactive<CreateCooperativePayload>({
   logo: props.model?.logo || null,
   primaryColor: props.model?.primaryColor || '#1976d2',
   secondaryColor: props.model?.secondaryColor || '#f5f5f5',
-  active: props.model?.active ?? true,
+  active: Boolean(props.model?.active ?? false),
 })
 
 const errors = reactive<Record<string, string | null>>({})
 
 const submitLabel = computed(() => (props.model ? 'Guardar cambios' : 'Crear Cooperativa'))
+
+// debug: observe changes to active while editing
+watch(() => form.active, v => {
+  console.log('[CooperativeForm] form.active changed ->', v)
+})
 
 function validate(): boolean {
   errors.name = !form.name ? 'El nombre es obligatorio' : null
@@ -177,12 +206,30 @@ function removeLogo() {
 
 function onCancel() {
   visibleLocal.value = false
+  emit('update:visible', false)
   emit('cancel')
 }
 
 function onHide() {
   visibleLocal.value = false
+  emit('update:visible', false)
+  emit('cancel')
 }
+
+onMounted(() => {
+  // Ensure any native/dialog title close button triggers onHide
+  const el = dialogRef.value?.$el || dialogRef.value
+  if (!el) return
+  const closeBtn = el.querySelector?.('.p-dialog-titlebar-close')
+  if (closeBtn) closeBtn.addEventListener('click', onHide)
+})
+
+onBeforeUnmount(() => {
+  const el = dialogRef.value?.$el || dialogRef.value
+  if (!el) return
+  const closeBtn = el.querySelector?.('.p-dialog-titlebar-close')
+  if (closeBtn) closeBtn.removeEventListener('click', onHide)
+})
 
 function handleSubmit() {
   if (!validate()) return
@@ -206,11 +253,41 @@ function handleSubmit() {
 watch(() => props.model?.logo, v => {
   logoPreview.value = v || null
 })
+// When `model` changes (edit open), populate the reactive form fields
+watch(() => props.model, (m) => {
+    if (!m) {
+    form.name = ''
+    form.ruc = ''
+    form.address = ''
+    form.email = ''
+    form.phone = ''
+    form.logo = null
+      form.primaryColor = '#1976d2'
+      form.secondaryColor = '#f5f5f5'
+      form.active = false
+    logoPreview.value = null
+    logoFile.value = null
+    return
+  }
+
+  form.name = m.name || ''
+  form.ruc = m.ruc || ''
+  form.address = m.address || ''
+  form.email = m.email || ''
+  form.phone = m.phone || ''
+  form.logo = (m as any).logo || null
+  form.primaryColor = m.primaryColor || '#1976d2'
+  form.secondaryColor = m.secondaryColor || '#f5f5f5'
+  form.active = typeof m.active !== 'undefined' ? Boolean(m.active) : true
+  logoPreview.value = (m as any).logo || null
+  logoFile.value = null
+})
+
 </script>
 
 <style scoped>
 .cooperative-form { max-width: 100%; }
-.subtitle { margin:0 0 1rem; color:var(--gray-medium) }
+.subtitle { margin:0 0 1rem; color:var(--app-accent) }
 .card { background:var(--white-bone); padding:1rem; border-radius:10px; margin-bottom:1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04) }
 .card.small { padding:0.75rem }
 .grid { display:grid; grid-template-columns: repeat(2, 1fr); gap:1rem }
