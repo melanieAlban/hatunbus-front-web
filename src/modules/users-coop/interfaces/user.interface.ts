@@ -13,6 +13,10 @@ export interface UserCoopDto {
   cooperativeId?: string | null
   cooperativeName?: string | null
   createdAt?: string | null
+  // Driver-specific fields
+  licenseNumber?: string | null
+  licenseType?: string | null
+  licenseExpiry?: string | null
 }
 
 export interface CreateUserPayload {
@@ -27,6 +31,10 @@ export interface CreateUserPayload {
   gender?: string | null
   profilePhoto?: string | null // optional base64 data URL
   cooperativeId?: string | null // required when role = CLERK
+  // Driver-specific fields (required when role = DRIVER)
+  licenseNumber?: string | null
+  licenseType?: string | null
+  licenseExpiry?: string | null
 }
 
 export interface UpdateUserPayload {
@@ -38,4 +46,8 @@ export interface UpdateUserPayload {
   gender?: string | null
   profilePhoto?: string | null // base64 data URL
   active?: boolean
+  // Driver-specific fields
+  licenseNumber?: string | null
+  licenseType?: string | null
+  licenseExpiry?: string | null
 }

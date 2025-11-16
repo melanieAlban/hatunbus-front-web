@@ -121,15 +121,15 @@
           </div>
         </div>
 
-        <!-- Fila 4: Rol y Cooperativa (condicional) -->
+        <!-- Fila 4: Rol y Cooperativa (solo para CLERK cuando no es COOPERATIVE, o DRIVER cuando es ADMIN) -->
         <div class="form-row">
           <div class="form-group">
             <label class="p-label">Rol *</label>
-            <Dropdown 
-              v-model="modelLocal.role" 
-              :options="roleOptions" 
-              optionLabel="label" 
-              optionValue="value" 
+            <Dropdown
+              v-model="modelLocal.role"
+              :options="roleOptions"
+              optionLabel="label"
+              optionValue="value"
               placeholder="Seleccionar rol"
               :class="{ 'p-invalid': errors.role }"
               class="w-full"
@@ -137,13 +137,13 @@
             <small v-if="errors.role" class="p-error">{{ errors.role }}</small>
           </div>
 
-          <div class="form-group" v-if="modelLocal.role === 'CLERK' || isAdmin">
+          <div class="form-group" v-if="(modelLocal.role === 'CLERK' || (modelLocal.role === 'DRIVER' && isAdmin)) && !isCooperative">
             <label class="p-label">Cooperativa <span v-if="modelLocal.role === 'CLERK'">*</span><span v-else> (opcional)</span></label>
-            <Dropdown 
-              v-model="modelLocal.cooperativeId" 
-              :options="cooperativesOptions" 
-              optionLabel="name" 
-              optionValue="id" 
+            <Dropdown
+              v-model="modelLocal.cooperativeId"
+              :options="cooperativesOptions"
+              optionLabel="name"
+              optionValue="id"
               placeholder="Seleccionar cooperativa"
               :class="{ 'p-invalid': errors.cooperativeId }"
               class="w-full"
@@ -151,28 +151,20 @@
             <small v-if="errors.cooperativeId" class="p-error">{{ errors.cooperativeId }}</small>
           </div>
 
-          <!-- Espacio para género cuando no hay cooperativa -->
+          <!-- Espacio vacío cuando se muestra cooperativa -->
           <div class="form-group" v-else>
-            <label class="p-label">Género</label>
-            <Dropdown 
-              v-model="modelLocal.gender" 
-              :options="genderOptions" 
-              optionLabel="label" 
-              optionValue="value" 
-              placeholder="Seleccionar género"
-              class="w-full"
-            />
+            <!-- Espacio vacío para mantener alineación -->
           </div>
         </div>
 
-        <!-- Fila 5: Fecha de Nacimiento y Género/Cooperativa -->
+        <!-- Fila 5: Fecha de Nacimiento y Género -->
         <div class="form-row">
           <div class="form-group">
             <label class="p-label">Fecha de Nacimiento</label>
-            <Calendar 
-              v-model="modelLocal.birthDate" 
-              dateFormat="yy-mm-dd" 
-              showIcon 
+            <Calendar
+              v-model="modelLocal.birthDate"
+              dateFormat="yy-mm-dd"
+              showIcon
               :maxDate="maxBirthDate"
               placeholder="Seleccionar fecha"
               class="w-full"
@@ -180,49 +172,41 @@
           </div>
 
           <div class="form-group">
-            <label class="p-label" v-if="modelLocal.role === 'CLERK'">Género</label>
-
-            <div v-if="modelLocal.role === 'CLERK'">
-              <Dropdown 
-                v-model="modelLocal.gender" 
-                :options="genderOptions" 
-                optionLabel="label" 
-                optionValue="value" 
-                placeholder="Seleccionar género"
-                class="w-full"
-              />
-            </div>
-
-            <div v-else>
-              <!-- espacio vacío para mantener alineación; no mostrar texto informativo -->
-            </div>
+            <label class="p-label">Género</label>
+            <Dropdown
+              v-model="modelLocal.gender"
+              :options="genderOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Seleccionar género"
+              class="w-full"
+            />
           </div>
         </div>
 
-        <!-- Fila 6: Foto de Perfil (si no es CLERK) o Espacio adicional -->
-        <div class="form-row" v-if="modelLocal.role !== 'CLERK'">
+        <!-- Fila 6: Foto de Perfil (para todos los roles excepto CLERK y DRIVER) -->
+        <div class="form-row" v-if="modelLocal.role !== 'CLERK' && modelLocal.role !== 'DRIVER'">
           <div class="form-group">
             <label class="p-label">Foto de Perfil</label>
-              <FileUpload 
-                mode="basic"
-                chooseLabel="Seleccionar imagen"
-                :class="{ 'p-invalid': errors.profilePhoto }"
-                accept="image/*"
-                :maxFileSize="5000000"
-                @select="onFileSelect"
-                class="w-full"
-              />
+            <FileUpload
+              mode="basic"
+              :chooseLabel="modelLocal.profilePhoto ? 'Cambiar imagen' : 'Seleccionar imagen'"
+              :class="{ 'p-invalid': errors.profilePhoto }"
+              accept="image/*"
+              :maxFileSize="5000000"
+              @select="onFileSelect"
+              class="w-full"
+            />
             <small class="file-hint">Formatos: JPG, PNG, GIF. Máx: 5MB</small>
           </div>
 
           <div class="form-group">
-            <!-- Espacio para vista previa de imagen -->
             <div v-if="modelLocal.profilePhoto" class="preview-section">
               <div class="preview-header">
                 <span>Vista previa:</span>
-                <Button 
-                  type="button" 
-                  icon="pi pi-times" 
+                <Button
+                  type="button"
+                  icon="pi pi-times"
                   class="p-button-text p-button-danger p-button-sm"
                   @click="removeImage"
                   v-tooltip="'Eliminar imagen'"
@@ -243,9 +227,9 @@
         <div class="form-row" v-if="modelLocal.role === 'CLERK'">
           <div class="form-group">
             <label class="p-label">Foto de Perfil</label>
-            <FileUpload 
+            <FileUpload
               mode="basic"
-              chooseLabel="Cambiar imagen"
+              :chooseLabel="modelLocal.profilePhoto ? 'Cambiar imagen' : 'Seleccionar imagen'"
               :class="{ 'p-invalid': errors.profilePhoto }"
               accept="image/*"
               :maxFileSize="5000000"
@@ -256,12 +240,12 @@
           </div>
 
           <div class="form-group">
-            <div class="preview-section">
+            <div v-if="modelLocal.profilePhoto" class="preview-section">
               <div class="preview-header">
                 <span>Vista previa:</span>
-                <Button 
-                  type="button" 
-                  icon="pi pi-times" 
+                <Button
+                  type="button"
+                  icon="pi pi-times"
                   class="p-button-text p-button-danger p-button-sm"
                   @click="removeImage"
                   v-tooltip="'Eliminar imagen'"
@@ -269,6 +253,108 @@
               </div>
               <div class="preview">
                 <img :src="modelLocal.profilePhoto" alt="Vista previa de perfil" />
+              </div>
+            </div>
+            <div v-else class="preview-placeholder">
+              <i class="pi pi-image" style="font-size: 2rem; color: var(--surface-400);"></i>
+              <small>Seleccione una imagen para ver la vista previa</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Campos específicos para Conductor -->
+        <div v-if="modelLocal.role === 'DRIVER'" class="driver-section">
+          <div class="section-divider">
+            <i class="pi pi-id-card"></i>
+            <span>Información de Licencia de Conducir</span>
+          </div>
+
+          <!-- Fila 1: Número de Licencia y Tipo -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="p-label">Número de Licencia *</label>
+              <InputText
+                v-model="modelLocal.licenseNumber"
+                :class="{ 'p-invalid': errors.licenseNumber }"
+                maxlength="20"
+                placeholder="Ej: EC-1234567890"
+                class="w-full"
+              />
+              <small v-if="errors.licenseNumber" class="p-error">{{ errors.licenseNumber }}</small>
+            </div>
+
+            <div class="form-group">
+              <label class="p-label">Tipo de Licencia *</label>
+              <Dropdown
+                v-model="modelLocal.licenseType"
+                :options="licenseTypeOptions"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Seleccionar tipo"
+                :class="{ 'p-invalid': errors.licenseType }"
+                class="w-full"
+              />
+              <small v-if="errors.licenseType" class="p-error">{{ errors.licenseType }}</small>
+            </div>
+          </div>
+
+          <!-- Fila 2: Fecha de Expiración -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="p-label">Fecha de Expiración de Licencia *</label>
+              <Calendar
+                v-model="modelLocal.licenseExpiry"
+                dateFormat="yy-mm-dd"
+                showIcon
+                :minDate="new Date()"
+                placeholder="Seleccionar fecha"
+                :class="{ 'p-invalid': errors.licenseExpiry }"
+                class="w-full"
+              />
+              <small v-if="errors.licenseExpiry" class="p-error">{{ errors.licenseExpiry }}</small>
+              <small class="password-hint">La licencia debe estar vigente</small>
+            </div>
+
+            <div class="form-group">
+              <!-- Espacio vacío para mantener alineación -->
+            </div>
+          </div>
+
+          <!-- Fila 3: Foto de Perfil para Conductor -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="p-label">Foto de Perfil</label>
+              <FileUpload
+                mode="basic"
+                :chooseLabel="modelLocal.profilePhoto ? 'Cambiar imagen' : 'Seleccionar imagen'"
+                :class="{ 'p-invalid': errors.profilePhoto }"
+                accept="image/*"
+                :maxFileSize="5000000"
+                @select="onFileSelect"
+                class="w-full"
+              />
+              <small class="file-hint">Formatos: JPG, PNG, GIF. Máx: 5MB</small>
+            </div>
+
+            <div class="form-group">
+              <div v-if="modelLocal.profilePhoto" class="preview-section">
+                <div class="preview-header">
+                  <span>Vista previa:</span>
+                  <Button
+                    type="button"
+                    icon="pi pi-times"
+                    class="p-button-text p-button-danger p-button-sm"
+                    @click="removeImage"
+                    v-tooltip="'Eliminar imagen'"
+                  />
+                </div>
+                <div class="preview">
+                  <img :src="modelLocal.profilePhoto" alt="Vista previa de perfil" />
+                </div>
+              </div>
+              <div v-else class="preview-placeholder">
+                <i class="pi pi-image" style="font-size: 2rem; color: var(--surface-400);"></i>
+                <small>Seleccione una imagen para ver la vista previa</small>
               </div>
             </div>
           </div>
@@ -329,20 +415,39 @@ const coopStore = useCooperativeStore()
 const cooperativesOptions = ref<any[]>([])
 const authStore = useAuthStore()
 const isAdmin = computed(() => authStore.user?.role === 'ADMIN')
+const isCooperative = computed(() => authStore.user?.role === 'COOPERATIVE')
 
-const roleOptions = [
-  { label: 'Cliente', value: 'CLIENT' },
-  { label: 'Oficinista', value: 'CLERK' },
-  { label: 'Administrador', value: 'ADMIN' },
-  {label:'Cooperativa', value:'COOPERATIVE' }
-    
+const roleOptions = computed(() => {
+  // Si el usuario es COOPERATIVE, solo puede crear conductores u oficinistas
+  if (isCooperative.value) {
+    return [
+      { label: 'Conductor', value: 'DRIVER' },
+      { label: 'Oficinista', value: 'CLERK' },
+    ]
+  }
 
-]
+  // Para ADMIN, mostrar todos los roles
+  return [
+    { label: 'Cliente', value: 'CLIENT' },
+    { label: 'Conductor', value: 'DRIVER' },
+    { label: 'Oficinista', value: 'CLERK' },
+    { label: 'Administrador', value: 'ADMIN' },
+    { label: 'Cooperativa', value: 'COOPERATIVE' }
+  ]
+})
 
 const genderOptions = [
   { label: 'Masculino', value: 'M' },
   { label: 'Femenino', value: 'F' },
   { label: 'Otro', value: 'O' },
+]
+
+const licenseTypeOptions = [
+  { label: 'Tipo A', value: 'A' },
+  { label: 'Tipo B', value: 'B' },
+  { label: 'Tipo C', value: 'C' },
+  { label: 'Tipo D', value: 'D' },
+  { label: 'Tipo E', value: 'E' },
 ]
 
 const isCreate = computed(() => !props.model)
@@ -367,6 +472,10 @@ const modelLocal = reactive<any>({
   profilePhoto: null,
   cooperativeId: null,
   active: true,
+  // Driver-specific fields
+  licenseNumber: null,
+  licenseType: null,
+  licenseExpiry: null,
 })
 
 const errors = reactive<any>({})
@@ -432,6 +541,10 @@ watch(() => props.model, (v) => {
     modelLocal.cooperativeId = v.cooperativeId || null
     modelLocal.active = typeof v.active === 'boolean' ? v.active : true
     modelLocal.password = ''
+    // Driver-specific fields
+    modelLocal.licenseNumber = v.licenseNumber || null
+    modelLocal.licenseType = v.licenseType || null
+    modelLocal.licenseExpiry = v.licenseExpiry ? new Date(v.licenseExpiry) : null
   } else {
     resetForm()
   }
@@ -450,7 +563,11 @@ function resetForm() {
   modelLocal.cooperativeId = null
   modelLocal.active = true
   modelLocal.password = ''
-  
+  // Driver-specific fields
+  modelLocal.licenseNumber = null
+  modelLocal.licenseType = null
+  modelLocal.licenseExpiry = null
+
   // Limpiar errores
   Object.keys(errors).forEach(key => {
     errors[key] = ''
@@ -477,6 +594,11 @@ onMounted(async () => {
 
     await coopStore.fetchAll()
     cooperativesOptions.value = (coopStore.items || []).map((c: any) => ({ id: c.id, name: c.name }))
+
+    // Si el usuario es COOPERATIVE, establecer automáticamente su cooperativa
+    if (isCooperative.value && authStore.user?.cooperativeId) {
+      modelLocal.cooperativeId = authStore.user.cooperativeId
+    }
   } catch (e) {
     console.error('[UserForm] error loading cooperatives:', e)
   }
@@ -531,11 +653,37 @@ function validate(): boolean {
     isValid = false
   }
 
+  // Driver license validation (only when creating a driver)
+  if (modelLocal.role === 'DRIVER') {
+    if (!modelLocal.licenseNumber?.trim()) {
+      errors.licenseNumber = 'El número de licencia es obligatorio para conductores'
+      isValid = false
+    }
+    if (!modelLocal.licenseType) {
+      errors.licenseType = 'El tipo de licencia es obligatorio para conductores'
+      isValid = false
+    }
+    if (!modelLocal.licenseExpiry) {
+      errors.licenseExpiry = 'La fecha de expiración de licencia es obligatoria para conductores'
+      isValid = false
+    } else {
+      // Validar que la licencia no esté expirada
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const expiryDate = new Date(modelLocal.licenseExpiry)
+      expiryDate.setHours(0, 0, 0, 0)
+      if (expiryDate < today) {
+        errors.licenseExpiry = 'La licencia está expirada'
+        isValid = false
+      }
+    }
+  }
+
   return isValid
 }
 
 function toCreatePayload() : CreateUserPayload {
-  return {
+  const payload: CreateUserPayload = {
     firstNames: modelLocal.firstNames.trim(),
     lastNames: modelLocal.lastNames.trim(),
     idCard: modelLocal.idCard.trim(),
@@ -548,10 +696,24 @@ function toCreatePayload() : CreateUserPayload {
     profilePhoto: modelLocal.profilePhoto || null,
     cooperativeId: modelLocal.cooperativeId || null,
   }
+
+  // Si el usuario es COOPERATIVE y está creando un DRIVER o CLERK, asignar automáticamente su cooperativa
+  if (isCooperative.value && (modelLocal.role === 'DRIVER' || modelLocal.role === 'CLERK')) {
+    payload.cooperativeId = authStore.user?.cooperativeId || modelLocal.cooperativeId
+  }
+
+  // Agregar campos de conductor si el rol es DRIVER
+  if (modelLocal.role === 'DRIVER') {
+    payload.licenseNumber = modelLocal.licenseNumber?.trim() || null
+    payload.licenseType = modelLocal.licenseType || null
+    payload.licenseExpiry = modelLocal.licenseExpiry ? modelLocal.licenseExpiry.toISOString().split('T')[0] : null
+  }
+
+  return payload
 }
 
 function toUpdatePayload() : UpdateUserPayload {
-  return {
+  const payload: UpdateUserPayload = {
     firstNames: modelLocal.firstNames?.trim() || undefined,
     lastNames: modelLocal.lastNames?.trim() || undefined,
     email: modelLocal.email?.trim() || null,
@@ -561,6 +723,15 @@ function toUpdatePayload() : UpdateUserPayload {
     profilePhoto: modelLocal.profilePhoto || null,
     active: typeof modelLocal.active === 'boolean' ? modelLocal.active : undefined,
   }
+
+  // Agregar campos de conductor si el rol es DRIVER
+  if (modelLocal.role === 'DRIVER') {
+    payload.licenseNumber = modelLocal.licenseNumber?.trim() || null
+    payload.licenseType = modelLocal.licenseType || null
+    payload.licenseExpiry = modelLocal.licenseExpiry ? modelLocal.licenseExpiry.toISOString().split('T')[0] : null
+  }
+
+  return payload
 }
 
 function onSubmit() {
@@ -747,17 +918,38 @@ function onSubmit() {
   width: 100%;
 }
 
+/* Driver section */
+.driver-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid var(--surface-border);
+}
+
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--app-accent);
+}
+
+.section-divider i {
+  font-size: 1.25rem;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .form-row {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
-  
+
   .password-field {
     flex-direction: column;
   }
-  
+
   .generate-btn {
     align-self: flex-end;
     margin-top: 0.5rem;
