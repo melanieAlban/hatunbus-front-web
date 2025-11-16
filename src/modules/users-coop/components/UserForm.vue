@@ -121,15 +121,15 @@
           </div>
         </div>
 
-        <!-- Fila 4: Rol y Cooperativa (condicional) -->
+        <!-- Fila 4: Rol y Cooperativa (solo para CLERK cuando no es COOPERATIVE, o DRIVER cuando es ADMIN) -->
         <div class="form-row">
           <div class="form-group">
             <label class="p-label">Rol *</label>
-            <Dropdown 
-              v-model="modelLocal.role" 
-              :options="roleOptions" 
-              optionLabel="label" 
-              optionValue="value" 
+            <Dropdown
+              v-model="modelLocal.role"
+              :options="roleOptions"
+              optionLabel="label"
+              optionValue="value"
               placeholder="Seleccionar rol"
               :class="{ 'p-invalid': errors.role }"
               class="w-full"
@@ -151,28 +151,20 @@
             <small v-if="errors.cooperativeId" class="p-error">{{ errors.cooperativeId }}</small>
           </div>
 
-          <!-- Espacio para género cuando no hay cooperativa -->
+          <!-- Espacio vacío cuando se muestra cooperativa -->
           <div class="form-group" v-else>
-            <label class="p-label">Género</label>
-            <Dropdown 
-              v-model="modelLocal.gender" 
-              :options="genderOptions" 
-              optionLabel="label" 
-              optionValue="value" 
-              placeholder="Seleccionar género"
-              class="w-full"
-            />
+            <!-- Espacio vacío para mantener alineación -->
           </div>
         </div>
 
-        <!-- Fila 5: Fecha de Nacimiento y Género/Cooperativa -->
+        <!-- Fila 5: Fecha de Nacimiento y Género -->
         <div class="form-row">
           <div class="form-group">
             <label class="p-label">Fecha de Nacimiento</label>
-            <Calendar 
-              v-model="modelLocal.birthDate" 
-              dateFormat="yy-mm-dd" 
-              showIcon 
+            <Calendar
+              v-model="modelLocal.birthDate"
+              dateFormat="yy-mm-dd"
+              showIcon
               :maxDate="maxBirthDate"
               placeholder="Seleccionar fecha"
               class="w-full"
@@ -180,49 +172,41 @@
           </div>
 
           <div class="form-group">
-            <label class="p-label" v-if="modelLocal.role === 'CLERK'">Género</label>
-
-            <div v-if="modelLocal.role === 'CLERK'">
-              <Dropdown 
-                v-model="modelLocal.gender" 
-                :options="genderOptions" 
-                optionLabel="label" 
-                optionValue="value" 
-                placeholder="Seleccionar género"
-                class="w-full"
-              />
-            </div>
-
-            <div v-else>
-              <!-- espacio vacío para mantener alineación; no mostrar texto informativo -->
-            </div>
+            <label class="p-label">Género</label>
+            <Dropdown
+              v-model="modelLocal.gender"
+              :options="genderOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Seleccionar género"
+              class="w-full"
+            />
           </div>
         </div>
 
-        <!-- Fila 6: Foto de Perfil (si no es CLERK) o Espacio adicional -->
-        <div class="form-row" v-if="modelLocal.role !== 'CLERK'">
+        <!-- Fila 6: Foto de Perfil (para todos los roles excepto CLERK y DRIVER) -->
+        <div class="form-row" v-if="modelLocal.role !== 'CLERK' && modelLocal.role !== 'DRIVER'">
           <div class="form-group">
             <label class="p-label">Foto de Perfil</label>
-              <FileUpload 
-                mode="basic"
-                chooseLabel="Seleccionar imagen"
-                :class="{ 'p-invalid': errors.profilePhoto }"
-                accept="image/*"
-                :maxFileSize="5000000"
-                @select="onFileSelect"
-                class="w-full"
-              />
+            <FileUpload
+              mode="basic"
+              :chooseLabel="modelLocal.profilePhoto ? 'Cambiar imagen' : 'Seleccionar imagen'"
+              :class="{ 'p-invalid': errors.profilePhoto }"
+              accept="image/*"
+              :maxFileSize="5000000"
+              @select="onFileSelect"
+              class="w-full"
+            />
             <small class="file-hint">Formatos: JPG, PNG, GIF. Máx: 5MB</small>
           </div>
 
           <div class="form-group">
-            <!-- Espacio para vista previa de imagen -->
             <div v-if="modelLocal.profilePhoto" class="preview-section">
               <div class="preview-header">
                 <span>Vista previa:</span>
-                <Button 
-                  type="button" 
-                  icon="pi pi-times" 
+                <Button
+                  type="button"
+                  icon="pi pi-times"
                   class="p-button-text p-button-danger p-button-sm"
                   @click="removeImage"
                   v-tooltip="'Eliminar imagen'"
@@ -333,6 +317,45 @@
 
             <div class="form-group">
               <!-- Espacio vacío para mantener alineación -->
+            </div>
+          </div>
+
+          <!-- Fila 3: Foto de Perfil para Conductor -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="p-label">Foto de Perfil</label>
+              <FileUpload
+                mode="basic"
+                :chooseLabel="modelLocal.profilePhoto ? 'Cambiar imagen' : 'Seleccionar imagen'"
+                :class="{ 'p-invalid': errors.profilePhoto }"
+                accept="image/*"
+                :maxFileSize="5000000"
+                @select="onFileSelect"
+                class="w-full"
+              />
+              <small class="file-hint">Formatos: JPG, PNG, GIF. Máx: 5MB</small>
+            </div>
+
+            <div class="form-group">
+              <div v-if="modelLocal.profilePhoto" class="preview-section">
+                <div class="preview-header">
+                  <span>Vista previa:</span>
+                  <Button
+                    type="button"
+                    icon="pi pi-times"
+                    class="p-button-text p-button-danger p-button-sm"
+                    @click="removeImage"
+                    v-tooltip="'Eliminar imagen'"
+                  />
+                </div>
+                <div class="preview">
+                  <img :src="modelLocal.profilePhoto" alt="Vista previa de perfil" />
+                </div>
+              </div>
+              <div v-else class="preview-placeholder">
+                <i class="pi pi-image" style="font-size: 2rem; color: var(--surface-400);"></i>
+                <small>Seleccione una imagen para ver la vista previa</small>
+              </div>
             </div>
           </div>
         </div>
