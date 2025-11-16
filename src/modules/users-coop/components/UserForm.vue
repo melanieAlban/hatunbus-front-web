@@ -245,7 +245,7 @@
             <label class="p-label">Foto de Perfil</label>
             <FileUpload
               mode="basic"
-              chooseLabel="Cambiar imagen"
+              :chooseLabel="modelLocal.profilePhoto ? 'Cambiar imagen' : 'Seleccionar imagen'"
               :class="{ 'p-invalid': errors.profilePhoto }"
               accept="image/*"
               :maxFileSize="5000000"
@@ -256,7 +256,7 @@
           </div>
 
           <div class="form-group">
-            <div class="preview-section">
+            <div v-if="modelLocal.profilePhoto" class="preview-section">
               <div class="preview-header">
                 <span>Vista previa:</span>
                 <Button
@@ -270,6 +270,10 @@
               <div class="preview">
                 <img :src="modelLocal.profilePhoto" alt="Vista previa de perfil" />
               </div>
+            </div>
+            <div v-else class="preview-placeholder">
+              <i class="pi pi-image" style="font-size: 2rem; color: var(--surface-400);"></i>
+              <small>Seleccione una imagen para ver la vista previa</small>
             </div>
           </div>
         </div>

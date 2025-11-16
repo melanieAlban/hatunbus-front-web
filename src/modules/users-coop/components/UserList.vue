@@ -152,6 +152,7 @@
 <script setup lang="ts">
 import { computed, toRef, ref, watch } from 'vue'
 import { useUserStore } from '../store/useUserStore'
+import { useAuthStore } from '../../auth/store/useAuthStore'
 import type { UserCoopDto } from '../interfaces/user.interface'
 
 // Components
@@ -167,7 +168,11 @@ const emit = defineEmits<{
 }>()
 
 const store = useUserStore()
+const authStore = useAuthStore()
 const q = toRef(props, 'query')
+
+// Verificar si el usuario logueado es COOPERATIVE
+const isCooperative = computed(() => authStore.user?.role === 'COOPERATIVE')
 
 // Filtros
 const filters = ref({
@@ -201,6 +206,11 @@ const hasActiveFilters = computed(() => {
 
 const filteredUsers = computed(() => {
     let list = store.items || []
+
+    // Si el usuario es COOPERATIVE, filtrar solo DRIVER y CLERK
+    if (isCooperative.value) {
+        list = list.filter(i => i.role === 'DRIVER' || i.role === 'CLERK')
+    }
 
     // Aplicar filtro de búsqueda global
     const term = (q.value || '').trim().toLowerCase()
