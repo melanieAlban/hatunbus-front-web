@@ -8,7 +8,7 @@ export type MenuItem = {
 export const adminMenu: MenuItem[] = [
   { label: 'Dashboard', path: '/admin', icon: 'pi pi-home', roles: ['ADMIN', 'COOPERATIVE'] },
   { label: 'Cooperativas', path: '/admin/cooperatives', icon: 'pi pi-building', roles: ['ADMIN'] },
-  { label: 'Usuarios', path: '/admin/users', icon: 'pi pi-users', roles: ['ADMIN'] },
+  { label: 'Usuarios', path: '/admin/users', icon: 'pi pi-users', roles: ['ADMIN', 'COOPERATIVE'] },
   { label: 'Roles', path: '/admin/roles', icon: 'pi pi-lock', roles: ['ADMIN'] },
   { label: 'Reportes', path: '/admin/reports', icon: 'pi pi-chart-line', roles: ['ADMIN', 'COOPERATIVE'] },
   { label: 'Frecuencias', path: '/admin/frequencies', icon: 'pi pi-clock', roles: ['COOPERATIVE','ADMIN'] },
