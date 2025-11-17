@@ -202,7 +202,7 @@ function onLogout() {
 
 .user-role {
   font-size: 0.75rem;
-  color: var(--gray-medium);
+  color: #000;
   margin-top: 2px;
 }
 

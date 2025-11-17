@@ -130,8 +130,8 @@
 
         <!-- Fila 5: Cooperativa y Estado -->
         <div class="form-row">
-          <div class="form-group" v-if="(modelLocal.role === 'CLERK' || (modelLocal.role === 'DRIVER' && isAdmin)) && !isCooperative">
-            <label class="p-label">Cooperativa <span v-if="modelLocal.role === 'CLERK'">*</span><span v-else> (opcional)</span></label>
+          <div class="form-group" v-if="(modelLocal.role === 'CLERK' || modelLocal.role === 'COOPERATIVE' || (modelLocal.role === 'DRIVER' && isAdmin)) && !isCooperative">
+            <label class="p-label">Cooperativa <span v-if="modelLocal.role === 'CLERK' || modelLocal.role === 'COOPERATIVE'">*</span><span v-else> (opcional)</span></label>
             <Dropdown
               v-model="modelLocal.cooperativeId"
               :options="cooperativesOptions"
@@ -654,6 +654,9 @@ function validate(): boolean {
     isValid = false
   } else if (modelLocal.role === 'CLERK' && !modelLocal.cooperativeId) {
     errors.cooperativeId = 'La cooperativa es obligatoria para un oficinista'
+    isValid = false
+  } else if (modelLocal.role === 'COOPERATIVE' && !modelLocal.cooperativeId) {
+    errors.cooperativeId = 'La cooperativa es obligatoria para un usuario de tipo Cooperativa'
     isValid = false
   }
 
