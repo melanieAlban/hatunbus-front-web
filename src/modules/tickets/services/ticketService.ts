@@ -78,13 +78,41 @@ export async function searchTrips(date: string, origin: string, destination: str
     }))
     
     const beforeFilter = trips.length
-    // Filtrar solo los que están programados y tienen asientos disponibles
-    trips = trips.filter(trip => 
-      trip.status === 'SCHEDULED' && 
-      trip.availableSeats && 
-      trip.availableSeats > 0
-    )
-    console.log(`[Service] Después de filtrar por status y asientos: ${beforeFilter} -> ${trips.length}`)
+    
+    // Obtener fecha y hora actual
+    const now = new Date()
+    
+    // Filtrar viajes que:
+    // 1. Estén programados (SCHEDULED)
+    // 2. Tengan asientos disponibles
+    // 3. La hora de salida no haya pasado aún
+    trips = trips.filter(trip => {
+      // Validar estado y asientos
+      if (trip.status !== 'SCHEDULED' || !trip.availableSeats || trip.availableSeats <= 0) {
+        return false
+      }
+      
+      // Validar hora de salida
+      if (trip.scheduledDepartureTime) {
+        let tripDateTime: Date
+        
+        // Si es un array [year, month, day, hour, minute]
+        if (Array.isArray(trip.scheduledDepartureTime)) {
+          const [year, month, day, hour = 0, minute = 0] = trip.scheduledDepartureTime
+          tripDateTime = new Date(year, month - 1, day, hour, minute)
+        } else {
+          tripDateTime = new Date(trip.scheduledDepartureTime)
+        }
+        
+        // Solo mostrar si la hora de salida es futura
+        return tripDateTime > now
+      }
+      
+      // Si no hay hora de salida, mostrar el viaje (caso raro pero seguro)
+      return true
+    })
+    
+    console.log(`[Service] Después de filtrar por status, asientos y hora: ${beforeFilter} -> ${trips.length}`)
     
     return trips as TripSummary[]
   } catch (error) {
@@ -114,12 +142,37 @@ export async function getAvailableTrips(cooperativeId?: string): Promise<TripSum
       trips = trips.filter(trip => trip.cooperativeId === cooperativeId)
     }
     
-    // Filtrar solo los que están programados y tienen asientos disponibles
-    trips = trips.filter(trip => 
-      trip.status === 'SCHEDULED' && 
-      trip.availableSeats && 
-      trip.availableSeats > 0
-    )
+    // Obtener fecha y hora actual
+    const now = new Date()
+    
+    // Filtrar viajes que:
+    // 1. Estén programados (SCHEDULED)
+    // 2. Tengan asientos disponibles
+    // 3. La hora de salida no haya pasado aún
+    trips = trips.filter(trip => {
+      // Validar estado y asientos
+      if (trip.status !== 'SCHEDULED' || !trip.availableSeats || trip.availableSeats <= 0) {
+        return false
+      }
+      
+      // Validar hora de salida
+      if (trip.scheduledDepartureTime) {
+        let tripDateTime: Date
+        
+        // Si es un array [year, month, day, hour, minute]
+        if (Array.isArray(trip.scheduledDepartureTime)) {
+          const [year, month, day, hour = 0, minute = 0] = trip.scheduledDepartureTime
+          tripDateTime = new Date(year, month - 1, day, hour, minute)
+        } else {
+          tripDateTime = new Date(trip.scheduledDepartureTime)
+        }
+        
+        // Solo mostrar si la hora de salida es futura
+        return tripDateTime > now
+      }
+      
+      return true
+    })
     
     return trips as TripSummary[]
   } catch (error) {
@@ -146,11 +199,38 @@ export async function getAvailableTrips(cooperativeId?: string): Promise<TripSum
         trips = trips.filter(trip => trip.cooperativeId === cooperativeId)
       }
       
-      trips = trips.filter(trip => 
-        trip.status === 'SCHEDULED' && 
-        trip.availableSeats && 
-        trip.availableSeats > 0
-      )
+      // Obtener fecha y hora actual
+      const now = new Date()
+      
+      // Filtrar viajes que:
+      // 1. Estén programados (SCHEDULED)
+      // 2. Tengan asientos disponibles
+      // 3. La hora de salida no haya pasado aún
+      trips = trips.filter(trip => {
+        // Validar estado y asientos
+        if (trip.status !== 'SCHEDULED' || !trip.availableSeats || trip.availableSeats <= 0) {
+          return false
+        }
+        
+        // Validar hora de salida
+        if (trip.scheduledDepartureTime) {
+          let tripDateTime: Date
+          
+          // Si es un array [year, month, day, hour, minute]
+          if (Array.isArray(trip.scheduledDepartureTime)) {
+            const [year, month, day, hour = 0, minute = 0] = trip.scheduledDepartureTime
+            tripDateTime = new Date(year, month - 1, day, hour, minute)
+          } else {
+            tripDateTime = new Date(trip.scheduledDepartureTime)
+          }
+          
+          // Solo mostrar si la hora de salida es futura
+          return tripDateTime > now
+        }
+        
+        return true
+      })
+      
       return trips as TripSummary[]
     } catch (err) {
       console.error('Error al obtener viajes por rango:', err)

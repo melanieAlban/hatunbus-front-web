@@ -102,6 +102,12 @@
                 </div>
               </div>
 
+              <!-- Información del conductor -->
+              <div v-if="ticket.driverName || ticket.mainDriverName" class="ticket-driver">
+                <i class="pi pi-user"></i>
+                <span>Conductor: <strong>{{ ticket.driverName || ticket.mainDriverName }}</strong></span>
+              </div>
+
               <Divider />
 
               <div class="ticket-price">
@@ -218,6 +224,10 @@
             <span class="value">
               Unidad: {{ ticket.busUnitNumber || 'N/A' }} | Placa: {{ ticket.busPlate || 'N/A' }}
             </span>
+          </div>
+          <div class="print-row" v-if="ticket.driverName || ticket.mainDriverName">
+            <span class="label">Conductor:</span>
+            <span class="value">{{ ticket.driverName || ticket.mainDriverName }}</span>
           </div>
           <div class="print-row" v-if="ticket.cooperativeName">
             <span class="label">Cooperativa:</span>

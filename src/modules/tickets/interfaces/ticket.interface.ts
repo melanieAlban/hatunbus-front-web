@@ -169,6 +169,9 @@ export interface TripSummary {
   cooperativeName?: string
   cooperativeId?: string // ID de la cooperativa (viene del Frequency → Cooperative)
   routeId?: string // ID de la ruta (viene del FrequencySegment → Route)
+  driverId?: string // Alias de mainDriverId
+  driverName?: string // Nombre completo del conductor
+  mainDriverName?: string // Alias de driverName
   frequencySegment?: {
     id: string
     routeId: string
