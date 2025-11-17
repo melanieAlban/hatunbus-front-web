@@ -1,0 +1,1197 @@
+<template>
+  <div class="ticket-sale-view">
+    <div class="sale-header">
+      <h1><i class="pi pi-ticket"></i> Venta de Boletos</h1>
+    </div>
+
+    <div class="sale-container">
+      <!-- Selección de Cooperativa y Viaje -->
+      <Card class="selection-card">
+        <template #content>
+          <div class="selection-grid">
+            <!-- Solo mostrar selector de cooperativa si el usuario NO tiene cooperativa asignada -->
+            <div v-if="!userCooperativeId" class="form-field">
+              <label class="field-label">Cooperativa</label>
+              <Dropdown
+                v-model="selectedCooperative"
+                :options="cooperatives"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="Seleccionar cooperativa"
+                class="w-full"
+                @change="onCooperativeChange"
+              />
+            </div>
+            
+            <!-- Si el usuario tiene cooperativa, mostrar info -->
+            <div v-else class="form-field">
+              <label class="field-label">Cooperativa</label>
+              <InputText 
+                :value="authStore.user?.cooperativeName || 'Mi Cooperativa'"
+                disabled
+                class="w-full"
+              />
+            </div>
+
+            <div class="form-field">
+              <label class="field-label">Viaje</label>
+              <Dropdown
+                v-model="selectedTrip"
+                :options="availableTrips"
+                optionLabel="routeName"
+                placeholder="Seleccionar viaje"
+                class="w-full"
+                :disabled="!selectedCooperative"
+                @change="onTripChange"
+              >
+                <template #value="slotProps">
+                  <div v-if="slotProps.value" class="trip-option">
+                    <span class="trip-route">{{ getTripLabel(slotProps.value) }}</span>
+                  </div>
+                  <span v-else>{{ slotProps.placeholder }}</span>
+                </template>
+                <template #option="slotProps">
+                  <div class="trip-option">
+                    <div class="trip-main">
+                      <span class="trip-route">{{ slotProps.option.routeName }}</span>
+                      <Tag :value="slotProps.option.busPlate" severity="info" class="bus-tag" />
+                    </div>
+                    <div class="trip-details">
+                      <small>{{ formatDateTime(slotProps.option.scheduledDepartureTime) }}</small>
+                      <small>{{ slotProps.option.availableSeats }} asientos disponibles</small>
+                    </div>
+                  </div>
+                </template>
+              </Dropdown>
+            </div>
+
+            <div class="form-field">
+              <label class="field-label">Pasajeros</label>
+              <InputNumber
+                v-model="passengerCount"
+                :min="1"
+                :max="selectedTrip?.availableSeats || 10"
+                :disabled="!selectedTrip"
+                showButtons
+                class="w-full"
+              />
+            </div>
+          </div>
+
+          <!-- Trip Summary -->
+          <div v-if="selectedTrip" class="trip-summary">
+            <Divider />
+            <div class="summary-grid">
+              <div class="summary-item">
+                <i class="pi pi-map-marker"></i>
+                <div>
+                  <small>Ruta</small>
+                  <strong>{{ selectedTrip.routeOrigin }} - {{ selectedTrip.routeDestination }}</strong>
+                </div>
+              </div>
+              <div class="summary-item">
+                <i class="pi pi-calendar"></i>
+                <div>
+                  <small>Fecha y Hora</small>
+                  <strong>{{ formatDateTime(selectedTrip.scheduledDepartureTime) }}</strong>
+                </div>
+              </div>
+              <div class="summary-item">
+                <i class="pi pi-car"></i>
+                <div>
+                  <small>Bus</small>
+                  <strong>{{ selectedTrip.busPlate }} - Unidad {{ selectedTrip.busUnitNumber }}</strong>
+                </div>
+              </div>
+              <div class="summary-item">
+                <i class="pi pi-users"></i>
+                <div>
+                  <small>Disponibilidad</small>
+                  <strong>{{ selectedTrip.availableSeats }} / {{ selectedTrip.busSeatsCount }} asientos</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+      </Card>
+
+      <!-- Selección de Asientos -->
+      <Card v-if="selectedTrip" class="seats-card">
+        <template #title>
+          <div class="card-title">
+            <i class="pi pi-car"></i>
+            Selección de asientos
+          </div>
+        </template>
+        <template #subtitle>
+          <div class="seat-legend">
+            <div class="legend-item">
+              <div class="seat-mini available">
+                <i class="pi pi-check-circle"></i>
+              </div>
+              <span>Disponible</span>
+            </div>
+            <div class="legend-item">
+              <div class="seat-mini selected">
+                <i class="pi pi-user"></i>
+              </div>
+              <span>Seleccionado</span>
+            </div>
+            <div class="legend-item">
+              <div class="seat-mini occupied">
+                <i class="pi pi-times-circle"></i>
+              </div>
+              <span>Ocupado</span>
+            </div>
+          </div>
+        </template>
+        <template #content>
+          <div class="bus-layout">
+            <!-- Driver area -->
+            <div class="driver-area">
+              <i class="pi pi-user"></i>
+              <span>Conductor</span>
+            </div>
+            
+            <!-- Aisle indicator -->
+            <div class="bus-info">
+              <small><i class="pi pi-arrow-down"></i> Pasillo central <i class="pi pi-arrow-down"></i></small>
+            </div>
+            
+            <div class="seat-grid">
+              <div
+                v-for="seat in seatNumbers"
+                :key="seat"
+                class="seat-item"
+                :class="{
+                  'selected': selectedSeats.includes(seat),
+                  'occupied': occupiedSeats.includes(seat),
+                  'disabled': occupiedSeats.includes(seat) || (selectedSeats.length >= passengerCount && !selectedSeats.includes(seat)),
+                  'aisle-right': parseInt(seat) % 4 === 2
+                }"
+                @click="toggleSeat(seat)"
+              >
+                <div class="seat-shape">
+                  <div class="seat-back"></div>
+                  <div class="seat-cushion">
+                    <span class="seat-number">{{ seat }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+      </Card>
+
+      <!-- Información de los Pasajeros -->
+      <Card v-if="selectedSeats.length > 0" class="passengers-card">
+        <template #title>
+          <div class="card-title">
+            <i class="pi pi-id-card"></i>
+            Información de los pasajeros
+          </div>
+        </template>
+        <template #content>
+          <div v-for="(seat, index) in selectedSeats" :key="seat" class="passenger-form">
+            <Divider v-if="index > 0" />
+            <div class="passenger-header">
+              <div class="passenger-badge">
+                <i class="pi pi-user"></i>
+                <h4>Pasajero {{ index + 1 }}</h4>
+              </div>
+              <Tag :value="`Asiento ${seat}`" severity="info" icon="pi pi-ticket" />
+            </div>
+            <div class="passenger-grid">
+              <div class="form-field" v-if="passengers[index]">
+                <label class="field-label">
+                  <i class="pi pi-user"></i>
+                  Nombre completo *
+                </label>
+                <InputText
+                  v-model="passengers[index]!.passengerName"
+                  placeholder="Nombres y apellidos"
+                  class="w-full"
+                />
+              </div>
+              <div class="form-field" v-if="passengers[index]">
+                <label class="field-label">
+                  <i class="pi pi-id-card"></i>
+                  Cédula *
+                </label>
+                <InputText
+                  v-model="passengers[index]!.passengerIdCard"
+                  placeholder="1234567890"
+                  maxlength="10"
+                  class="w-full"
+                />
+              </div>
+              <div class="form-field" v-if="passengers[index]">
+                <label class="field-label">
+                  <i class="pi pi-users"></i>
+                  Tipo de pasajero *
+                </label>
+                <Dropdown
+                  v-model="passengers[index]!.passengerType"
+                  :options="passengerTypes"
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Seleccionar tipo"
+                  class="w-full"
+                />
+              </div>
+              <div class="form-field" v-if="passengers[index]">
+                <label class="field-label">
+                  <i class="pi pi-envelope"></i>
+                  Email
+                </label>
+                <InputText
+                  v-model="passengers[index]!.passengerEmail"
+                  placeholder="correo@ejemplo.com"
+                  type="email"
+                  class="w-full"
+                />
+              </div>
+              <div class="form-field" v-if="passengers[index]">
+                <label class="field-label">
+                  <i class="pi pi-phone"></i>
+                  Teléfono
+                </label>
+                <InputText
+                  v-model="passengers[index]!.passengerPhone"
+                  placeholder="0987654321"
+                  maxlength="10"
+                  class="w-full"
+                />
+              </div>
+            </div>
+          </div>
+        </template>
+      </Card>
+
+      <!-- Pago -->
+      <Card v-if="selectedSeats.length > 0" class="payment-card">
+        <template #title>
+          <div class="card-title">
+            <i class="pi pi-wallet"></i>
+            Pago
+          </div>
+        </template>
+        <template #content>
+          <div class="payment-section">
+            <div class="payment-method">
+              <label class="field-label">Método de pago *</label>
+              <div class="payment-options">
+                <div
+                  v-for="method in paymentMethods"
+                  :key="method.value"
+                  class="payment-option"
+                  :class="{ 'selected': paymentMethod === method.value }"
+                  @click="paymentMethod = method.value"
+                >
+                  <i :class="method.icon"></i>
+                  <span>{{ method.label }}</span>
+                </div>
+              </div>
+            </div>
+
+            <Divider />
+
+            <div class="price-summary">
+              <div class="price-row">
+                <span><i class="pi pi-ticket"></i> Subtotal ({{ selectedSeats.length }} boletos)</span>
+                <span class="price">${{ calculateSubtotal().toFixed(2) }}</span>
+              </div>
+              <div class="price-row" v-if="calculateDiscount() > 0">
+                <span><i class="pi pi-percentage"></i> Descuentos</span>
+                <span class="price discount">-${{ calculateDiscount().toFixed(2) }}</span>
+              </div>
+              <Divider />
+              <div class="price-row total">
+                <span><i class="pi pi-dollar"></i> Total a pagar</span>
+                <span class="price">${{ calculateTotal().toFixed(2) }}</span>
+              </div>
+            </div>
+          </div>
+        </template>
+      </Card>
+
+      <!-- Botón de Venta -->
+      <div v-if="selectedSeats.length > 0" class="action-buttons">
+        <Button
+          label="Cancelar"
+          icon="pi pi-times"
+          class="p-button-secondary p-button-lg"
+          @click="resetForm"
+        />
+        <Button
+          label="Confirmar y Emitir Boletos"
+          icon="pi pi-check-circle"
+          class="p-button-success p-button-lg"
+          :loading="loading"
+          @click="submitPurchase"
+        />
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, watch, onMounted } from 'vue'
+import Card from 'primevue/card'
+import Dropdown from 'primevue/dropdown'
+import InputNumber from 'primevue/inputnumber'
+import InputText from 'primevue/inputtext'
+import Button from 'primevue/button'
+import Divider from 'primevue/divider'
+import Tag from 'primevue/tag'
+import { useTicketStore } from '../store/useTicketStore'
+import { useCooperativeStore } from '../../cooperatives/store/useCooperativeStore'
+import { useAuthStore } from '../../auth/store/useAuthStore'
+import type { TripSummary, RequestTicketDto, PassengerType, PaymentMethod } from '../interfaces/ticket.interface'
+import { success, error as notifyError } from '../../../lib/notifier'
+
+const ticketStore = useTicketStore()
+const coopStore = useCooperativeStore()
+const authStore = useAuthStore()
+
+const selectedCooperative = ref<string>()
+const selectedTrip = ref<TripSummary | null>(null)
+const passengerCount = ref(1)
+const selectedSeats = ref<string[]>([])
+const occupiedSeats = ref<string[]>([])
+const paymentMethod = ref<string>('CASH')
+const loading = ref(false)
+
+interface PassengerForm {
+  passengerName: string
+  passengerIdCard: string
+  passengerEmail?: string
+  passengerPhone?: string
+  passengerType: PassengerType
+}
+
+const passengers = ref<PassengerForm[]>([])
+
+// Computed para obtener datos del store
+const cooperatives = computed(() => coopStore.items)
+const availableTrips = computed(() => ticketStore.availableTrips)
+
+// Obtener cooperativa del usuario autenticado
+const userCooperativeId = computed(() => authStore.user?.cooperativeId || null)
+
+const seatNumbers = computed(() => {
+  if (!selectedTrip.value) return []
+  const count = selectedTrip.value.busSeatsCount || 40
+  
+  // Generar asientos en formato backend: V1, P1, V2, P2, V3, P3...
+  // V = Ventana (columnas 1 y 4), P = Pasillo (columnas 2 y 3)
+  const seats: string[] = []
+  let vCounter = 1
+  let pCounter = 1
+  
+  for (let i = 1; i <= count; i++) {
+    // En una fila de 4 asientos: posiciones 1,2,3,4
+    const positionInRow = ((i - 1) % 4) + 1
+    
+    // Posiciones 1 y 4 son ventana, 2 y 3 son pasillo
+    if (positionInRow === 1 || positionInRow === 4) {
+      seats.push(`V${vCounter}`)
+      vCounter++
+    } else {
+      seats.push(`P${pCounter}`)
+      pCounter++
+    }
+  }
+  
+  return seats
+})
+
+const passengerTypes = [
+  { label: '👤 Adulto', value: 'ADULTO' },
+  { label: '👶 Menor', value: 'MENOR' },
+  { label: '♿ Discapacitado', value: 'DISCAPACITADO' },
+  { label: '🎓 Estudiante', value: 'ESTUDIANTE' }
+]
+
+const paymentMethods = [
+  { label: 'Efectivo', value: 'CASH', icon: 'pi pi-money-bill' },
+  { label: 'Tarjeta', value: 'CARD', icon: 'pi pi-credit-card' },
+  { label: 'Transferencia', value: 'TRANSFER', icon: 'pi pi-building-columns' }
+]
+
+const BASE_PRICE = 15.00
+
+onMounted(async () => {
+  try {
+    await coopStore.fetchAll()
+    
+    // Si el usuario tiene cooperativa asignada, cargar viajes automáticamente
+    if (userCooperativeId.value) {
+      selectedCooperative.value = userCooperativeId.value
+      await loadTripsForCooperative(userCooperativeId.value)
+    } else if (coopStore.items.length === 0) {
+      notifyError('No hay cooperativas disponibles. Por favor contacte al administrador.')
+    }
+  } catch (err) {
+    console.error('Error al cargar cooperativas:', err)
+    notifyError('Error al cargar cooperativas')
+  }
+})
+
+watch(selectedSeats, (newSeats) => {
+  // Adjust passengers array to match selected seats
+  const diff = newSeats.length - passengers.value.length
+  if (diff > 0) {
+    for (let i = 0; i < diff; i++) {
+      passengers.value.push({
+        passengerName: '',
+        passengerIdCard: '',
+        passengerEmail: '',
+        passengerPhone: '',
+        passengerType: 'ADULTO' as PassengerType
+      })
+    }
+  } else if (diff < 0) {
+    passengers.value = passengers.value.slice(0, newSeats.length)
+  }
+})
+
+async function loadTripsForCooperative(cooperativeId: string) {
+  loading.value = true
+  try {
+    await ticketStore.loadAvailableTrips(cooperativeId)
+    if (ticketStore.availableTrips.length === 0) {
+      notifyError('No hay viajes disponibles para esta cooperativa')
+    }
+  } catch (err: any) {
+    console.error('Error al cargar viajes:', err)
+    notifyError(err.response?.data?.message || 'Error al cargar viajes')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function onCooperativeChange() {
+  selectedTrip.value = null
+  selectedSeats.value = []
+  
+  if (!selectedCooperative.value) return
+  
+  await loadTripsForCooperative(selectedCooperative.value)
+}
+
+async function onTripChange() {
+  selectedSeats.value = []
+  occupiedSeats.value = []
+  passengers.value = []
+  
+  if (!selectedTrip.value) return
+  
+  loading.value = true
+  try {
+    // Cargar asientos ocupados desde el backend
+    const tickets = await ticketStore.loadTicketsByTrip(selectedTrip.value.id)
+    occupiedSeats.value = tickets.map(t => t.seatNumber)
+  } catch (err: any) {
+    console.error('Error al cargar asientos ocupados:', err)
+    // Si hay error, asumir que no hay asientos ocupados
+    occupiedSeats.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+function toggleSeat(seat: string) {
+  if (occupiedSeats.value.includes(seat)) return
+  
+  const index = selectedSeats.value.indexOf(seat)
+  if (index > -1) {
+    selectedSeats.value.splice(index, 1)
+  } else {
+    if (selectedSeats.value.length < passengerCount.value) {
+      selectedSeats.value.push(seat)
+    }
+  }
+}
+
+function getTripLabel(tripId: string): string {
+  const trip = availableTrips.value.find(t => t.id === tripId)
+  return trip ? `${trip.routeName} - ${trip.busPlate}` : ''
+}
+
+function formatDateTime(datetime: string): string {
+  if (!datetime) return ''
+  const date = new Date(datetime)
+  return date.toLocaleString('es-EC', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+function calculateSubtotal(): number {
+  return selectedSeats.value.length * BASE_PRICE
+}
+
+function calculateDiscount(): number {
+  let discount = 0
+  passengers.value.forEach(p => {
+    if (p.passengerType === 'MENOR') discount += BASE_PRICE * 0.5
+    else if (p.passengerType === 'DISCAPACITADO') discount += BASE_PRICE * 0.25
+    else if (p.passengerType === 'ESTUDIANTE') discount += BASE_PRICE * 0.25
+  })
+  return discount
+}
+
+function calculateTotal(): number {
+  return calculateSubtotal() - calculateDiscount()
+}
+
+function validateForm(): boolean {
+  if (!selectedTrip.value) {
+    notifyError('Debe seleccionar un viaje')
+    return false
+  }
+  
+  if (selectedSeats.value.length === 0) {
+    notifyError('Debe seleccionar al menos un asiento')
+    return false
+  }
+  
+  for (let i = 0; i < passengers.value.length; i++) {
+    const p = passengers.value[i]
+    if (!p) {
+      notifyError(`Información del pasajero ${i + 1} incompleta`)
+      return false
+    }
+    if (!p.passengerName.trim()) {
+      notifyError(`El nombre del pasajero ${i + 1} es obligatorio`)
+      return false
+    }
+    if (!p.passengerIdCard.trim() || p.passengerIdCard.length !== 10) {
+      notifyError(`La cédula del pasajero ${i + 1} debe tener 10 dígitos`)
+      return false
+    }
+  }
+  
+  return true
+}
+
+async function submitPurchase() {
+  if (!validateForm()) return
+  
+  loading.value = true
+  try {
+    const tickets: RequestTicketDto[] = selectedSeats.value.map((seat, index) => {
+      const passenger = passengers.value[index]!
+      return {
+        tripId: selectedTrip.value!.id,
+        seatNumber: seat,
+        passengerName: passenger.passengerName,
+        passengerIdCard: passenger.passengerIdCard,
+        passengerEmail: passenger.passengerEmail,
+        passengerPhone: passenger.passengerPhone,
+        passengerType: passenger.passengerType
+      }
+    })
+    
+    const purchase = await ticketStore.createPurchase({
+      buyerUserId: authStore.user!.id,
+      purchaseType: 'IN_PERSON' as any,
+      paymentMethod: paymentMethod.value as any,
+      tickets
+    })
+    
+    // Auto-confirm payment for in-person purchases
+    await ticketStore.confirmPayment(purchase.id)
+    
+    success('Boletos emitidos correctamente')
+    resetForm()
+  } catch (err: any) {
+    notifyError(err.response?.data?.message || 'Error al emitir los boletos')
+  } finally {
+    loading.value = false
+  }
+}
+
+function resetForm() {
+  selectedCooperative.value = undefined
+  selectedTrip.value = null
+  passengerCount.value = 1
+  selectedSeats.value = []
+  passengers.value = []
+  paymentMethod.value = 'CASH'
+  occupiedSeats.value = []
+}
+</script>
+
+<style scoped>
+.ticket-sale-view {
+  padding: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.sale-header {
+  margin-bottom: 2rem;
+}
+
+.sale-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sale-header h1 i {
+  color: var(--primary-color);
+}
+
+.sale-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.selection-card,
+.seats-card,
+.passengers-card,
+.payment-card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.card-title i {
+  color: var(--primary-color);
+}
+
+.selection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.field-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.field-label i {
+  color: var(--primary-color);
+  font-size: 0.85rem;
+}
+
+.trip-option {
+  width: 100%;
+}
+
+.trip-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.trip-route {
+  font-weight: 600;
+}
+
+.bus-tag {
+  font-size: 0.75rem;
+}
+
+.trip-details {
+  display: flex;
+  gap: 1rem;
+  color: var(--text-color-secondary);
+}
+
+.trip-summary {
+  margin-top: 1rem;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.summary-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.summary-item i {
+  font-size: 1.5rem;
+  color: var(--primary-color);
+  margin-top: 0.25rem;
+}
+
+.summary-item small {
+  display: block;
+  color: var(--text-color-secondary);
+  font-size: 0.85rem;
+}
+
+.summary-item strong {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.95rem;
+}
+
+.seat-legend {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.95rem;
+  padding: 0.5rem 1rem;
+  background: var(--surface-ground);
+  border-radius: 8px;
+}
+
+.seat-mini {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px 8px 4px 4px;
+  border: 2px solid var(--surface-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.seat-mini::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  height: 6px;
+  background: inherit;
+  border-radius: 4px 4px 0 0;
+  border: inherit;
+  border-bottom: none;
+}
+
+.seat-mini i {
+  font-size: 1rem;
+  z-index: 1;
+}
+
+.seat-mini.available {
+  background: #e8f5e9;
+  border-color: #4caf50;
+  color: #2e7d32;
+}
+
+.seat-mini.selected {
+  background: #2196F3;
+  border-color: #1976D2;
+  color: white;
+}
+
+.seat-mini.occupied {
+  background: #ffebee;
+  border-color: #ef5350;
+  color: #c62828;
+}
+
+.bus-layout {
+  padding: 2rem;
+  background: linear-gradient(135deg, #F5F1EB 0%, #E8DFD5 100%);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 2px solid #C9A882;
+}
+
+.driver-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: #FFFFFF;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+  font-weight: 600;
+  color: #5A4A3A;
+  box-shadow: 0 4px 12px rgba(107, 91, 71, 0.15);
+  border: 2px solid #A0826D;
+}
+
+.driver-area i {
+  font-size: 1.5rem;
+  color: var(--primary-color);
+}
+
+.bus-info {
+  text-align: center;
+  color: #5A4A3A;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+}
+
+.bus-info i {
+  color: #8B7355;
+}
+
+.seat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 12px;
+  border: 1px solid rgba(139, 115, 85, 0.2);
+}
+
+.seat-item {
+  aspect-ratio: 0.85;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  user-select: none;
+  position: relative;
+}
+
+.seat-item.aisle-right {
+  margin-right: 1.5rem;
+}
+
+.seat-shape {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.seat-back {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 85%;
+  height: 25%;
+  background: linear-gradient(180deg, #C9E4C5 0%, #A8D5A3 100%);
+  border-radius: 8px 8px 4px 4px;
+  border: 2px solid #81C784;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.seat-cushion {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 72%;
+  background: linear-gradient(180deg, #E8F5E9 0%, #C8E6C9 100%);
+  border-radius: 12px 12px 6px 6px;
+  border: 2px solid #81C784;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.seat-number {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #2E7D32;
+  z-index: 2;
+}
+
+.seat-item:hover:not(.disabled):not(.occupied) .seat-cushion {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.seat-item:hover:not(.disabled):not(.occupied) .seat-back {
+  background: linear-gradient(180deg, #A8D5A3 0%, #81C784 100%);
+  border-color: #66BB6A;
+}
+
+.seat-item:hover:not(.disabled):not(.occupied) .seat-cushion {
+  background: linear-gradient(180deg, #C8E6C9 0%, #A5D6A7 100%);
+  border-color: #66BB6A;
+}
+
+.seat-item.selected .seat-back {
+  background: linear-gradient(180deg, #1E88E5 0%, #1565C0 100%);
+  border-color: #0D47A1;
+}
+
+.seat-item.selected .seat-cushion {
+  background: linear-gradient(180deg, #2196F3 0%, #1976D2 100%);
+  border-color: #0D47A1;
+  box-shadow: 0 4px 16px rgba(33, 150, 243, 0.5);
+}
+
+.seat-item.selected .seat-number {
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.seat-item.occupied .seat-back {
+  background: linear-gradient(180deg, #ef5350 0%, #e53935 100%);
+  border-color: #c62828;
+}
+
+.seat-item.occupied .seat-cushion {
+  background: linear-gradient(180deg, #ef5350 0%, #e53935 100%);
+  border-color: #c62828;
+  cursor: not-allowed;
+}
+
+.seat-item.occupied .seat-number {
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.seat-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.seat-item.disabled .seat-back,
+.seat-item.disabled .seat-cushion {
+  filter: grayscale(0.5);
+}
+
+.passenger-form {
+  padding: 1.5rem;
+  background: var(--surface-ground);
+  border-radius: 12px;
+  margin-bottom: 1rem;
+}
+
+.passenger-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.passenger-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.passenger-badge i {
+  font-size: 1.5rem;
+  color: var(--primary-color);
+  background: rgba(var(--primary-color-rgb), 0.1);
+  padding: 0.5rem;
+  border-radius: 50%;
+}
+
+.passenger-badge h4 {
+  margin: 0;
+  color: var(--text-color);
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.passenger-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.payment-section {
+  padding: 0.5rem 0;
+}
+
+.payment-method {
+  margin-bottom: 1.5rem;
+}
+
+.payment-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 992px) {
+  .payment-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+.payment-option {
+  padding: 2rem 1.5rem;
+  border: 3px solid #E8DFD5;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.payment-option::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: #8B7355;
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.payment-option:hover {
+  border-color: #A0826D;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(139, 115, 85, 0.2);
+}
+
+.payment-option:hover::before {
+  transform: scaleX(1);
+}
+
+.payment-option.selected {
+  background: linear-gradient(135deg, #E8DFD5 0%, #e3bf97 0%);
+  border-color: #A0826D;
+  color: #5A4A3A;
+  box-shadow: 0 8px 24px rgba(201, 168, 130, 0.3);
+}
+
+.payment-option.selected::before {
+  transform: scaleX(1);
+  background: #A0826D;
+}
+
+.payment-option i {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.payment-option span {
+  font-weight: 700;
+  font-size: 1.05rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: center;
+  word-break: break-word;
+}
+
+.price-summary {
+  padding: 1.5rem;
+  background: linear-gradient(135deg, var(--surface-ground) 0%, var(--surface-50) 100%);
+  border-radius: 12px;
+  border: 2px solid var(--surface-border);
+}
+
+.price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0;
+  font-size: 1.05rem;
+}
+
+.price-row span:first-child {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.price-row i {
+  color: var(--primary-color);
+  font-size: 1.1rem;
+}
+
+.price-row.total {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  padding: 1.5rem 0 0.5rem 0;
+}
+
+.price-row.total i {
+  font-size: 1.5rem;
+}
+
+.price {
+  font-weight: 700;
+  font-size: 1.15rem;
+}
+
+.price.discount {
+  color: #e53935;
+  font-weight: 700;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1.5rem;
+  position: sticky;
+  bottom: 0;
+  background: linear-gradient(180deg, transparent 0%, var(--surface-ground) 20%);
+  border-radius: 12px;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+@media (max-width: 768px) {
+  .seat-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+  }
+  
+  .action-buttons button {
+    width: 100%;
+  }
+}
+</style>
