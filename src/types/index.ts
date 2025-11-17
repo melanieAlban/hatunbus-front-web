@@ -36,13 +36,19 @@ export interface BusAssignment {
   status: string
 }
 
+export interface FrequencySegmentDetail {
+  frequencySegmentId: string
+  segmentOrder: number
+  departureTime: string
+  origin: string
+  destination: string
+  estimatedDuration: number
+}
+
 export interface RouteSheetMatrixRow {
   frequencyId: string
-  frequencySegmentId: string
   frequencyName: string
-  segmentOrder: number
-  routeName: string
-  departureTime: string
+  segments: FrequencySegmentDetail[]
   assignments: Record<string, BusAssignment>
 }
 
