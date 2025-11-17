@@ -12,6 +12,7 @@ export const adminMenu: MenuItem[] = [
   { label: 'Roles', path: '/admin/roles', icon: 'pi pi-lock', roles: ['ADMIN'] },
   { label: 'Reportes', path: '/admin/reports', icon: 'pi pi-chart-line', roles: ['ADMIN', 'COOPERATIVE'] },
   { label: 'Frecuencias', path: '/admin/frequencies', icon: 'pi pi-clock', roles: ['COOPERATIVE','ADMIN'] },
+  { label: 'Hoja de Ruta', path: '/admin/route-sheet', icon: 'pi pi-calendar', roles: ['COOPERATIVE','ADMIN'] },
   { label: 'Buses', path: '/admin/buses', icon: 'pi pi-car', roles: ['COOPERATIVE','ADMIN'] },
   { label: 'Conductores', path: '/admin/drivers', icon: 'pi pi-user', roles: ['COOPERATIVE','ADMIN'] },
   { label: 'Ventas', path: '/admin/sales', icon: 'pi pi-money-bill', roles: ['COOPERATIVE', 'ADMIN'] },

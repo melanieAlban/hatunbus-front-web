@@ -1,15 +1,31 @@
 <template>
   <Toast ref="toast" position="top-right" />
 
-  <Dialog v-model:visible="confirmVisible" modal :closable="false" :style="{ width: '420px' }">
+  <Dialog 
+    v-model:visible="confirmVisible" 
+    modal 
+    :closable="false" 
+    :style="{ width: '500px', maxWidth: '90vw' }"
+    :header="opts.title || 'Confirmar'"
+  >
     <div class="confirm-content">
-      <h3 class="confirm-title">{{ opts.title || 'Confirmar' }}</h3>
-      <p class="confirm-message">{{ opts.message }}</p>
-      <div class="confirm-actions">
-        <Button class="p-button-text" :label="opts.rejectLabel || 'Cancelar'" @click="onReject" />
-        <Button class="p-button-raised p-button-danger" :label="opts.acceptLabel || 'Eliminar'" @click="onAccept" />
-      </div>
+      <p class="confirm-message" v-html="formatMessage(opts.message)"></p>
     </div>
+    <template #footer>
+      <div class="confirm-actions">
+        <Button 
+          :label="opts.rejectLabel || 'Cancelar'" 
+          severity="secondary"
+          text
+          @click="onReject" 
+        />
+        <Button 
+          :label="opts.acceptLabel || 'Aceptar'" 
+          severity="danger"
+          @click="onAccept" 
+        />
+      </div>
+    </template>
   </Dialog>
 </template>
 
@@ -45,6 +61,13 @@ function onReject() {
   resolveRef.value?.(false)
 }
 
+function formatMessage(message: string): string {
+  // Convertir saltos de línea a <br> y números de lista a puntos con formato
+  return message
+    .replace(/\n/g, '<br>')
+    .replace(/(\d+)\./g, '<strong>$1.</strong>')
+}
+
 setConfirmHandler(openConfirm)
 
 // set toast ref when mounted via nextTick
@@ -56,8 +79,26 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.confirm-content { padding: 1rem }
-.confirm-title { margin: 0 0 0.25rem; font-size: 1.1rem }
-.confirm-message { margin: 0 0 1rem; color: var(--gray-dark) }
-.confirm-actions { display:flex; justify-content:flex-end; gap:0.5rem }
+.confirm-content { 
+  padding: 0.5rem 0;
+}
+
+.confirm-message { 
+  margin: 0;
+  line-height: 1.8;
+  color: var(--app-text);
+  font-size: 0.95rem;
+}
+
+.confirm-message :deep(strong) {
+  color: var(--app-accent);
+  font-weight: 600;
+}
+
+.confirm-actions { 
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 0;
+}
 </style>

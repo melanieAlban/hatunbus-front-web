@@ -71,6 +71,10 @@
               </td>
               <td class="table-cell actions-cell">
                 <div class="actions-group">
+                  <button class="action-btn action-frequencies" @click="$emit('manageFrequencies', c)" title="Gestionar frecuencias">
+                    <i class="pi pi-calendar"></i>
+                    <span>Frecuencias</span>
+                  </button>
                   <button class="action-btn action-edit" @click="$emit('edit', c)" title="Editar cooperativa">
                     <i class="pi pi-pencil"></i>
                     <span>Editar</span>
@@ -107,6 +111,7 @@ const props = defineProps<{ query?: string }>()
 const emit = defineEmits<{
   (e: 'edit', item: CooperativeDto): void
   (e: 'delete', item: CooperativeDto): void
+  (e: 'manageFrequencies', item: CooperativeDto): void
 }>()
 
 const store = useCooperativeStore()
@@ -215,7 +220,7 @@ const filtered = computed(() => {
 .email-column { min-width: 200px; }
 .phone-column { min-width: 140px; }
 .state-column { min-width: 120px; }
-.actions-column { min-width: 160px; }
+.actions-column { min-width: 260px; }
 
 /* Celdas con contenido enriquecido */
 .name-content,
@@ -302,6 +307,16 @@ const filtered = computed(() => {
   cursor: pointer;
   transition: all 0.2s ease;
   text-decoration: none;
+}
+
+.action-frequencies {
+  background: #2196F3;
+  color: white;
+}
+
+.action-frequencies:hover {
+  background: #1976D2;
+  transform: translateY(-1px);
 }
 
 .action-edit {
