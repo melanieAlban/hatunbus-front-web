@@ -91,18 +91,18 @@
               <tbody>
                 <tr
                   v-for="(row, index) in matrix.rows"
-                  :key="row.frequencySegmentId"
-                  :class="['data-row', isNewFrequencyGroup(index) ? 'frequency-group-separator' : '']"
+                  :key="`${row.frequencySegmentId}-${index}`"
+                  :class="getRowClasses(row, index)"
                 >
-                  <td class="sticky-col time-cell">{{ row.departureTime }}</td>
+                  <td class="sticky-col time-cell">{{ formatTime(row.departureTime) }}</td>
                   <td class="sticky-col-2 route-cell">{{ getOrigin(row.routeName) }}</td>
                   <td class="sticky-col-3 route-cell">{{ getDestination(row.routeName) }}</td>
                   <td
                     v-for="date in matrix.dates"
                     :key="date"
-                    :class="['assignment-cell', getAssignmentClass(row.assignments[date])]"
+                    :class="getCellClasses(row, date)"
                   >
-                    <span v-if="row.assignments[date]" class="bus-number">
+                    <span v-if="row.assignments && row.assignments[date]" class="bus-number">
                       {{ row.assignments[date].busUnitNumber }}
                     </span>
                   </td>
@@ -269,33 +269,53 @@ function getDestination(routeName: string): string {
   return parts[1]?.trim() || ''
 }
 
-function getAssignmentClass(assignment: any): string {
-  if (!assignment) return 'no-assignment-cell'
-
-  switch (assignment.status) {
-    case 'SCHEDULED':
-      return 'scheduled-cell'
-    case 'IN_PROGRESS':
-      return 'in-progress-cell'
-    case 'COMPLETED':
-      return 'completed-cell'
-    case 'CANCELLED':
-      return 'cancelled-cell'
-    default:
-      return ''
-  }
+function formatTime(time: string): string {
+  // Format time from HH:mm:ss to HH:mm
+  if (!time) return ''
+  return time.substring(0, 5)
 }
 
-function isNewFrequencyGroup(index: number): boolean {
-  if (!matrix.value || index === 0) return false
+function getRowClasses(row: any, index: number): string[] {
+  const classes = ['data-row']
 
-  const currentRow = matrix.value.rows[index]
-  const previousRow = matrix.value.rows[index - 1]
+  // Add separator if this is a new frequency group
+  if (index > 0 && matrix.value) {
+    const previousRow = matrix.value.rows[index - 1]
+    if (previousRow && row.frequencyId !== previousRow.frequencyId) {
+      classes.push('frequency-group-separator')
+    }
+  }
 
-  if (!currentRow || !previousRow) return false
+  return classes
+}
 
-  // Nueva frecuencia si el frequencyId es diferente
-  return currentRow.frequencyId !== previousRow.frequencyId
+function getCellClasses(row: any, date: string): string[] {
+  const classes = ['assignment-cell']
+
+  const assignment = row.assignments?.[date]
+
+  if (!assignment) {
+    classes.push('no-assignment-cell')
+    return classes
+  }
+
+  // Add status-based classes
+  switch (assignment.status) {
+    case 'SCHEDULED':
+      classes.push('scheduled-cell')
+      break
+    case 'IN_PROGRESS':
+      classes.push('in-progress-cell')
+      break
+    case 'COMPLETED':
+      classes.push('completed-cell')
+      break
+    case 'CANCELLED':
+      classes.push('cancelled-cell')
+      break
+  }
+
+  return classes
 }
 </script>
 
