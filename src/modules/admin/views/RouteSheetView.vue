@@ -71,45 +71,49 @@
         </div>
 
         <!-- Matriz de hoja de ruta -->
-        <div v-else-if="matrix" class="matrix-wrapper">
-          <div class="matrix-header">
-            <h2 class="matrix-title">HOJA DE TRABAJO A PARTIR DEL DÍA {{ formatMatrixDate(matrix.startDate) }}</h2>
-          </div>
+        <div v-if="matrix && matrix.rows && matrix.rows.length > 0" class="matrix-wrapper">
+          <h3 class="matrix-title">
+            <i class="pi pi-calendar"></i>
+            Hoja de Trabajo - {{ formatMatrixDate(matrix.startDate) }}
+          </h3>
 
-          <div class="matrix-table-container">
-            <table class="route-matrix-table">
-              <thead>
-                <tr class="header-row">
-                  <th class="sticky-col header-cell">HORA</th>
-                  <th class="sticky-col-2 header-cell">ORIGEN</th>
-                  <th class="sticky-col-3 header-cell">DESTINO</th>
-                  <th v-for="date in matrix.dates" :key="date" class="date-header">
-                    {{ formatDateHeader(date) }}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="(row, index) in matrix.rows"
-                  :key="`${row.frequencySegmentId}-${index}`"
-                  :class="getRowClasses(row, index)"
-                >
-                  <td class="sticky-col time-cell">{{ formatTime(row.departureTime) }}</td>
-                  <td class="sticky-col-2 route-cell">{{ getOrigin(row.routeName) }}</td>
-                  <td class="sticky-col-3 route-cell">{{ getDestination(row.routeName) }}</td>
-                  <td
-                    v-for="date in matrix.dates"
-                    :key="date"
-                    :class="getCellClasses(row, date)"
-                  >
-                    <span v-if="row.assignments && row.assignments[date]" class="bus-number">
-                      {{ row.assignments[date].busUnitNumber }}
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            :value="matrix.rows"
+            :scrollable="true"
+            scrollHeight="600px"
+            :stripedRows="true"
+          >
+            <Column field="frequencyName" header="FRECUENCIA" frozen style="min-width: 250px">
+              <template #body="slotProps">
+                <div>
+                  <div class="route-path">
+                    <template v-for="(segment, idx) in slotProps.data.segments" :key="segment.frequencySegmentId">
+                      {{ segment.origin }}
+                      <i class="pi pi-arrow-right"></i>
+                      <span v-if="idx === slotProps.data.segments.length - 1">{{ segment.destination }}</span>
+                    </template>
+                  </div>
+                </div>
+              </template>
+            </Column>
+
+            <Column
+              v-for="date in matrix.dates"
+              :key="date"
+              :header="formatDateHeader(date)"
+              style="min-width: 80px"
+            >
+              <template #body="slotProps">
+                <Tag
+                  v-if="slotProps.data.assignments && slotProps.data.assignments[date]"
+                  :value="slotProps.data.assignments[date].busUnitNumber"
+                  :severity="getTagSeverity(slotProps.data.assignments[date].status)"
+                  rounded
+                />
+                <span v-else class="text-gray">-</span>
+              </template>
+            </Column>
+          </DataTable>
         </div>
 
         <!-- Sin datos -->
@@ -134,6 +138,9 @@ import type { RouteSheetMatrixDto } from '../../../types'
 
 // PrimeVue Components
 import Calendar from 'primevue/calendar'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import Tag from 'primevue/tag'
 
 const auth = useAuthStore()
 const frequencyStore = useFrequencyStore()
@@ -144,10 +151,27 @@ const matrix = ref<RouteSheetMatrixDto | null>(null)
 const startDate = ref<Date | null>(null)
 const endDate = ref<Date | null>(null)
 
+
 // Calcular fecha mínima (hoy) y máxima (2 meses desde hoy)
 const minDate = new Date()
 const maxDate = new Date()
 maxDate.setMonth(maxDate.getMonth() + 2)
+
+// Función para determinar el color del Tag según el estado
+function getTagSeverity(status: string): "success" | "info" | "warn" | "danger" | "secondary" {
+  switch (status) {
+    case 'COMPLETED':
+      return 'success'
+    case 'IN_PROGRESS':
+      return 'info'
+    case 'SCHEDULED':
+      return 'warn'
+    case 'CANCELLED':
+      return 'danger'
+    default:
+      return 'secondary'
+  }
+}
 
 onMounted(async () => {
   if (auth.user?.cooperativeId) {
@@ -267,26 +291,6 @@ function getOrigin(routeName: string): string {
 function getDestination(routeName: string): string {
   const parts = routeName.split('-')
   return parts[1]?.trim() || ''
-}
-
-function formatTime(time: string): string {
-  // Format time from HH:mm:ss to HH:mm
-  if (!time) return ''
-  return time.substring(0, 5)
-}
-
-function getRowClasses(row: any, index: number): string[] {
-  const classes = ['data-row']
-
-  // Add separator if this is a new frequency group
-  if (index > 0 && matrix.value) {
-    const previousRow = matrix.value.rows[index - 1]
-    if (previousRow && row.frequencyId !== previousRow.frequencyId) {
-      classes.push('frequency-group-separator')
-    }
-  }
-
-  return classes
 }
 
 function getCellClasses(row: any, date: string): string[] {
@@ -441,160 +445,31 @@ function getCellClasses(row: any, date: string): string[] {
   margin-top: 1.5rem;
 }
 
-.matrix-header {
-  background: #1976D2;
-  padding: 0.75rem 1rem;
-  border: 2px solid #0D47A1;
-  margin-bottom: 0;
-}
-
 .matrix-title {
-  margin: 0;
-  color: #FFFFFF;
-  font-size: 1.1rem;
-  font-weight: bold;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
 }
 
-.matrix-info p {
-  margin: 0;
-  color: var(--gray-medium);
-  font-size: 0.9rem;
+.text-sm {
+  font-size: 0.875rem;
 }
 
-.matrix-table-container {
-  overflow-x: auto;
-  border: 2px solid #000;
-  border-top: none;
+.text-gray {
+  color: #6b7280;
 }
 
-.route-matrix-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.8rem;
-  background: white;
+.route-path {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
 }
 
-.header-row {
-  background: #1976D2;
-}
-
-.header-cell {
-  padding: 0.5rem;
-  text-align: center;
-  font-weight: bold;
-  color: #FFFFFF;
-  border: 1px solid #0D47A1;
-  white-space: nowrap;
-  text-transform: uppercase;
-  font-size: 0.75rem;
-}
-
-.data-row {
-  border-bottom: 1px solid #BDBDBD;
-}
-
-.data-row:hover {
-  background: #F5F5F5;
-}
-
-/* Separador entre grupos de frecuencias */
-.frequency-group-separator {
-  border-top: 3px solid #0D47A1;
-}
-
-.route-matrix-table td {
-  padding: 0.5rem;
-  border: 1px solid #BDBDBD;
-  text-align: center;
-}
-
-.sticky-col {
-  position: sticky;
-  left: 0;
-  background: #F5F5F5;
-  z-index: 3;
-  border-right: 2px solid #0D47A1;
-}
-
-.sticky-col-2 {
-  position: sticky;
-  left: 60px;
-  background: #F5F5F5;
-  z-index: 2;
-  border-right: 2px solid #0D47A1;
-}
-
-.sticky-col-3 {
-  position: sticky;
-  left: 180px;
-  background: #F5F5F5;
-  z-index: 2;
-  border-right: 2px solid #0D47A1;
-}
-
-.time-cell {
-  text-align: center;
-  font-weight: bold;
-  color: #000;
-  font-size: 0.75rem;
-  min-width: 60px;
-}
-
-.route-cell {
-  text-align: left;
-  font-weight: normal;
-  color: #000;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 120px;
-  font-size: 0.75rem;
-  padding-left: 0.5rem;
-}
-
-.date-header {
-  text-align: center;
-  min-width: 60px;
-  background: #1976D2;
-  color: #FFFFFF;
-  border: 1px solid #0D47A1;
-}
-
-.assignment-cell {
-  background: #E3F2FD;
-  min-width: 60px;
-  vertical-align: middle;
-}
-
-.bus-number {
-  font-weight: bold;
-  color: #000;
-  font-size: 1rem;
-}
-
-.no-assignment {
-  color: var(--gray-light);
-}
-
-.scheduled-cell {
-  background: #e8f5e9;
-}
-
-.in-progress-cell {
-  background: #fff9c4;
-}
-
-.completed-cell {
-  background: #e3f2fd;
-}
-
-.cancelled-cell {
-  background: #ffebee;
-}
-
-.no-assignment-cell {
-  background: #fafafa;
+.route-path .pi-arrow-right {
+  font-size: 0.7rem;
+  margin: 0 0.25rem;
 }
 
 .btn-primary,
