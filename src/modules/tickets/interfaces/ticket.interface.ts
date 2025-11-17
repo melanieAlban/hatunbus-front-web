@@ -44,6 +44,7 @@ export interface TicketDto {
   scheduledDepartureTime?: string
   cooperativeName?: string
   busPlate?: string
+  busUnitNumber?: number
   
   // Seat data
   seatNumber: string
@@ -134,6 +135,18 @@ export interface StopDto {
   distanceFromOrigin: number
   estimatedMinutes: number
   isMainStop: boolean
+}
+
+export interface RouteDto {
+  id: string
+  name: string
+  origin: string
+  destination: string
+  distance: number
+  estimatedDuration: number
+  basePrice: number
+  cooperativeId?: string
+  isActive?: boolean
 }
 
 export interface TripSummary {

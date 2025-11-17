@@ -30,7 +30,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'frequencies', name: 'AdminFrequencies', component: () => import('../modules/admin/views/FrequenciesView.vue'), meta: { requiresAuth: true, roles: ['COOPERATIVE'] } },
       { path: 'buses', name: 'AdminBuses', component: () => import('../modules/buses/views/BusesView.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'COOPERATIVE'] } },
       { path: 'drivers', name: 'AdminDrivers', component: () => import('../modules/conductores/views/DriversView.vue'), meta: { requiresAuth: true, roles: ['COOPERATIVE','ADMIN'] } },
-      { path: 'sales', name: 'AdminSales', component: () => import('../modules/admin/views/SalesView.vue'), meta: { requiresAuth: true, roles: ['COOPERATIVE','ADMIN','CLERK'] } },
+      { path: 'sales', name: 'AdminSales', component: () => import('../modules/sales/views/SalesView.vue'), meta: { requiresAuth: true, roles: ['COOPERATIVE','ADMIN','CLERK'] } },
       { path: 'tickets', name: 'AdminTickets', component: () => import('../modules/tickets/views/TicketSaleView.vue'), meta: { requiresAuth: true, roles: ['COOPERATIVE','CLERK','ADMIN'] } },
       { path: 'personalize', name: 'AdminPersonalize', component: () => import('../modules/admin/views/PersonalizeView.vue'), meta: { requiresAuth: true, roles: ['ADMIN','COOPERATIVE'] } },
     ]

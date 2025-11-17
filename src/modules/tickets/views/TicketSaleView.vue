@@ -416,6 +416,13 @@
         />
       </div>
     </div>
+
+    <!-- Diálogo de Compra Exitosa -->
+    <PurchaseSuccessDialog
+      :purchase="completedPurchase"
+      @close="handleClosePurchaseDialog"
+      @newSale="handleNewSale"
+    />
   </div>
 </template>
 
@@ -431,11 +438,12 @@ import Tag from 'primevue/tag'
 import { useTicketStore } from '../store/useTicketStore'
 import { useCooperativeStore } from '../../cooperatives/store/useCooperativeStore'
 import { useAuthStore } from '../../auth/store/useAuthStore'
-import type { TripSummary, RequestTicketDto, PassengerType, PaymentMethod, CreatePurchaseRequest, PurchaseType, StopDto } from '../interfaces/ticket.interface'
+import type { TripSummary, RequestTicketDto, PassengerType, PaymentMethod, CreatePurchaseRequest, PurchaseType, StopDto, PurchaseDto, RouteDto } from '../interfaces/ticket.interface'
 import { success, error as notifyError } from '../../../lib/notifier'
 import * as cityService from '../services/cityService'
 import * as ticketService from '../services/ticketService'
 import type { CityDto } from '../services/cityService'
+import PurchaseSuccessDialog from '../components/PurchaseSuccessDialog.vue'
 
 // Directiva tooltip
 const vTooltip = {
@@ -454,8 +462,10 @@ const passengerCount = ref(1)
 const selectedSeats = ref<string[]>([])
 const occupiedSeats = ref<string[]>([])
 const routeStops = ref<StopDto[]>([])
+const selectedRoute = ref<RouteDto | null>(null)
 const paymentMethod = ref<string>('CASH')
 const loading = ref(false)
+const completedPurchase = ref<PurchaseDto | null>(null)
 
 // Variables para búsqueda de viajes
 const cities = ref<CityDto[]>([])
@@ -555,6 +565,9 @@ const paymentMethods = [
 ]
 
 const BASE_PRICE = 15.00
+
+// Precio base dinámico - usar el de la ruta seleccionada o el valor por defecto
+const routeBasePrice = computed(() => selectedRoute.value?.basePrice || BASE_PRICE)
 
 async function loadCities() {
   loadingCities.value = true
@@ -657,22 +670,34 @@ async function selectTrip(trip: TripSummary) {
   occupiedSeats.value = []
   passengers.value = []
   routeStops.value = []
+  selectedRoute.value = null
   
-  // Cargar stops de la ruta
+  // Cargar stops y precio de la ruta
   try {
     const routeId = trip.frequencySegment?.routeId || trip.routeId
     console.log('routeId extraído:', routeId)
     
     if (routeId) {
-      console.log('Cargando stops para routeId:', routeId)
-      routeStops.value = await ticketService.getRouteStops(routeId)
-      console.log('Stops cargados:', routeStops.value.length, routeStops.value)
+      console.log('Cargando información de la ruta:', routeId)
+      
+      // Cargar stops y detalles de la ruta en paralelo
+      const [stops, route] = await Promise.all([
+        ticketService.getRouteStops(routeId),
+        ticketService.getRouteById(routeId)
+      ])
+      
+      routeStops.value = stops
+      selectedRoute.value = route
+      
+      console.log('Stops cargados:', stops.length, stops)
+      console.log('Ruta cargada:', route)
+      console.log('Precio base de la ruta:', route.basePrice)
     } else {
       console.warn('No se encontró routeId en el trip seleccionado')
       console.warn('Trip keys:', Object.keys(trip))
     }
   } catch (err) {
-    console.error('Error al cargar stops:', err)
+    console.error('Error al cargar información de la ruta:', err)
   }
   
   onTripChange()
@@ -869,15 +894,15 @@ function formatDateTime(datetime: string): string {
 }
 
 function calculateSubtotal(): number {
-  return selectedSeats.value.length * BASE_PRICE
+  return selectedSeats.value.length * routeBasePrice.value
 }
 
 function calculateDiscount(): number {
   let discount = 0
   passengers.value.forEach(p => {
-    if (p.passengerType === 'CHILD') discount += BASE_PRICE * 0.5 // 50% niños
-    else if (p.passengerType === 'SENIOR') discount += BASE_PRICE * 0.3 // 30% tercera edad
-    else if (p.passengerType === 'DISABLED') discount += BASE_PRICE * 0.5 // 50% discapacitados
+    if (p.passengerType === 'CHILD') discount += routeBasePrice.value * 0.5 // 50% niños
+    else if (p.passengerType === 'SENIOR') discount += routeBasePrice.value * 0.3 // 30% tercera edad
+    else if (p.passengerType === 'DISABLED') discount += routeBasePrice.value * 0.5 // 50% discapacitados
   })
   return discount
 }
@@ -1041,8 +1066,11 @@ async function submitPurchase() {
       await ticketStore.confirmPayment(purchase.id)
     }
     
+    // Mostrar diálogo de éxito con los boletos
+    completedPurchase.value = purchase
+    
+    // Notificación de éxito
     success('Boletos emitidos correctamente')
-    resetForm()
   } catch (err: any) {
     console.error('Error en submitPurchase:', err)
     notifyError(err.response?.data?.message || err.message || 'Error al emitir los boletos')
@@ -1059,7 +1087,18 @@ function resetForm() {
   passengers.value = []
   paymentMethod.value = 'CASH'
   occupiedSeats.value = []
+  completedPurchase.value = null
+  selectedRoute.value = null
 }
+
+function handleClosePurchaseDialog() {
+  completedPurchase.value = null
+}
+
+function handleNewSale() {
+  resetForm()
+}
+
 </script>
 
 <style scoped>

@@ -1,5 +1,5 @@
 import apiClient from '../../../services/apiClient'
-import type { CreatePurchaseRequest, PurchaseDto, TicketDto, TripSummary, StopDto } from '../interfaces/ticket.interface'
+import type { CreatePurchaseRequest, PurchaseDto, TicketDto, TripSummary, StopDto, RouteDto } from '../interfaces/ticket.interface'
 
 const BASE = '/compras'
 const TICKET_BASE = '/boletos'
@@ -169,6 +169,11 @@ export async function getRouteStops(routeId: string): Promise<StopDto[]> {
   return res.data as StopDto[]
 }
 
+export async function getRouteById(routeId: string): Promise<RouteDto> {
+  const res = await apiClient.get(`${ROUTE_BASE}/${routeId}`)
+  return res.data as RouteDto
+}
+
 export default {
   createPurchase,
   confirmPayment,
@@ -179,5 +184,6 @@ export default {
   getAvailableTrips,
   searchTrips,
   getTripById,
-  getRouteStops
+  getRouteStops,
+  getRouteById
 }
