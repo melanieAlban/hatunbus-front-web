@@ -26,6 +26,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'cooperatives', name: 'AdminCooperatives', component: () => import('../modules/cooperatives/views/CooperativesView.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
       { path: 'users', name: 'AdminUsers', component: () => import('../modules/users-coop/views/UsersCoopView.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'COOPERATIVE'] } },
       { path: 'roles', name: 'AdminRoles', component: () => import('../modules/admin/views/RolesView.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
+      { path: 'route-sheet', name: 'AdminRouteSheet', component: () => import('../modules/admin/views/RouteSheetView.vue'), meta: { requiresAuth: true, roles: ['COOPERATIVE','ADMIN'] } },
       { path: 'reports', name: 'AdminReports', component: () => import('../modules/admin/views/ReportsView.vue'), meta: { requiresAuth: true, roles: ['ADMIN','COOPERATIVE','CLERK'] } },
       { path: 'frequencies', name: 'AdminFrequencies', component: () => import('../modules/admin/views/FrequenciesView.vue'), meta: { requiresAuth: true, roles: ['COOPERATIVE'] } },
       { path: 'buses', name: 'AdminBuses', component: () => import('../modules/buses/views/BusesView.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'COOPERATIVE'] } },

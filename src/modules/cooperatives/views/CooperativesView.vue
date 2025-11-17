@@ -11,7 +11,7 @@
       </div>
     </header>
 
-    <CooperativeList :query="query" @edit="onEdit" @delete="onDelete" />
+    <CooperativeList :query="query" @edit="onEdit" @delete="onDelete" @manageFrequencies="onManageFrequencies" />
 
     <CooperativeForm
       :visible="showCreate"
@@ -27,6 +27,14 @@
       @submit="update"
       @cancel="() => (editing = null)"
     />
+
+    <FrequencySelectionModal
+      :visible="showFrequencyModal"
+      :cooperativeId="selectedCooperativeId"
+      :cooperativeName="selectedCooperativeName"
+      @update:visible="val => (showFrequencyModal = val)"
+      @saved="onFrequenciesSaved"
+    />
   </div>
 </template>
 
@@ -34,6 +42,7 @@
 import { ref, onMounted, computed } from 'vue'
 import CooperativeList from '../components/CooperativeList.vue'
 import CooperativeForm from '../components/CooperativeForm.vue'
+import FrequencySelectionModal from '../components/FrequencySelectionModal.vue'
 import { useCooperativeStore } from '../store/useCooperativeStore'
 import * as service from '../services/cooperativeService'
 import { confirm, success, error as notifyError } from '../../../lib/notifier'
@@ -42,6 +51,9 @@ const store = useCooperativeStore()
 const query = ref('')
 const showCreate = ref(false)
 const editing = ref<any | null>(null)
+const showFrequencyModal = ref(false)
+const selectedCooperativeId = ref<string | null>(null)
+const selectedCooperativeName = ref('')
 
 onMounted(() => {
   store.fetchAll()
@@ -104,6 +116,16 @@ async function onDelete(item: any) {
     const err: any = e
     notifyError('Error eliminando', err?.response?.data?.message || err?.message || 'No se pudo eliminar')
   }
+}
+
+function onManageFrequencies(item: any) {
+  selectedCooperativeId.value = item.id
+  selectedCooperativeName.value = item.name
+  showFrequencyModal.value = true
+}
+
+function onFrequenciesSaved() {
+  success('Frecuencias actualizadas', 'Las frecuencias han sido actualizadas correctamente')
 }
 
 const userAvatar = computed(() => null)
