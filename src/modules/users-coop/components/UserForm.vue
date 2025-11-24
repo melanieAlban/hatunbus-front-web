@@ -691,19 +691,45 @@ function validate(): boolean {
 }
 
 function toCreatePayload() : CreateUserPayload {
-  const payload: CreateUserPayload = {
+  // Construir payload base
+  const payload: any = {
     firstNames: modelLocal.firstNames.trim(),
     lastNames: modelLocal.lastNames.trim(),
     idCard: modelLocal.idCard.trim(),
     password: modelLocal.password,
     role: modelLocal.role,
-    email: modelLocal.email?.trim() || null,
-    phone: modelLocal.phone?.trim() || null,
-    birthDate: modelLocal.birthDate ? modelLocal.birthDate.toISOString().split('T')[0] : null,
-    gender: modelLocal.gender || null,
-    profilePhoto: modelLocal.profilePhoto || null,
-    cooperativeId: modelLocal.cooperativeId || null,
   }
+
+  // Agregar campos opcionales solo si tienen valor
+  if (modelLocal.email?.trim()) {
+    payload.email = modelLocal.email.trim()
+  }
+  
+  if (modelLocal.phone?.trim()) {
+    payload.phone = modelLocal.phone.trim()
+  }
+  
+  if (modelLocal.birthDate) {
+    payload.birthDate = modelLocal.birthDate.toISOString().split('T')[0]
+  }
+  
+  if (modelLocal.gender) {
+    payload.gender = modelLocal.gender
+  }
+  
+  if (modelLocal.profilePhoto && modelLocal.profilePhoto.trim() !== '') {
+    payload.profilePhoto = modelLocal.profilePhoto
+  }
+  
+  if (modelLocal.cooperativeId) {
+    payload.cooperativeId = modelLocal.cooperativeId
+  }
+
+  console.log('📤 Payload a enviar:', {
+    ...payload,
+    profilePhoto: payload.profilePhoto ? `[Base64 de ${payload.profilePhoto.length} caracteres]` : 'no incluido',
+    password: '[OCULTA]'
+  })
 
   // Si el usuario es COOPERATIVE y está creando un DRIVER o CLERK, asignar automáticamente su cooperativa
   if (isCooperative.value && (modelLocal.role === 'DRIVER' || modelLocal.role === 'CLERK')) {
@@ -712,12 +738,18 @@ function toCreatePayload() : CreateUserPayload {
 
   // Agregar campos de conductor si el rol es DRIVER
   if (modelLocal.role === 'DRIVER') {
-    payload.licenseNumber = modelLocal.licenseNumber?.trim() || null
-    payload.licenseType = modelLocal.licenseType || null
-    payload.licenseExpiry = modelLocal.licenseExpiry ? modelLocal.licenseExpiry.toISOString().split('T')[0] : null
+    if (modelLocal.licenseNumber?.trim()) {
+      payload.licenseNumber = modelLocal.licenseNumber.trim()
+    }
+    if (modelLocal.licenseType) {
+      payload.licenseType = modelLocal.licenseType
+    }
+    if (modelLocal.licenseExpiry) {
+      payload.licenseExpiry = modelLocal.licenseExpiry.toISOString().split('T')[0]
+    }
   }
 
-  return payload
+  return payload as CreateUserPayload
 }
 
 function buildDriverPayload() {

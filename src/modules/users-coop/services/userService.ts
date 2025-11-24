@@ -24,8 +24,23 @@ export async function getUserById(id: string): Promise<UserCoopDto> {
 }
 
 export async function createUser(payload: CreateUserPayload): Promise<UserCoopDto> {
-  const res = await apiClient.post(`${BASE}`, payload)
-  return res.data as UserCoopDto
+  console.log('🚀 [userService] Creando usuario...')
+  console.log('📦 Payload completo:', {
+    ...payload,
+    password: '[OCULTA]',
+    profilePhoto: payload.profilePhoto ? `[Base64 de ${payload.profilePhoto.length} chars]` : null
+  })
+  
+  try {
+    const res = await apiClient.post(`${BASE}`, payload)
+    console.log('✅ [userService] Usuario creado exitosamente')
+    return res.data as UserCoopDto
+  } catch (error: any) {
+    console.error('❌ [userService] Error al crear usuario:', error)
+    console.error('📄 Response data:', error.response?.data)
+    console.error('📄 Request data size:', JSON.stringify(payload).length, 'caracteres')
+    throw error
+  }
 }
 
 export async function updateUser(id: string, payload: UpdateUserPayload): Promise<UserCoopDto> {

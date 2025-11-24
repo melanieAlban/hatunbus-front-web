@@ -138,7 +138,21 @@
                   <i class="pi pi-arrow-right"></i>
                   <strong>{{ trip.routeOrigin }} → {{ trip.routeDestination }}</strong>
                 </div>
-                <Tag :value="trip.busPlate" severity="info" />
+                <div class="trip-tags">
+                  <Tag :value="trip.busPlate" severity="info" icon="pi pi-car" />
+                  <Tag 
+                    v-if="trip.driverName || trip.mainDriverName" 
+                    :value="trip.driverName || trip.mainDriverName || 'Sin conductor'" 
+                    severity="success" 
+                    icon="pi pi-user" 
+                  />
+                  <Tag 
+                    v-else
+                    value="Sin conductor asignado" 
+                    severity="warning" 
+                    icon="pi pi-exclamation-triangle" 
+                  />
+                </div>
               </div>
               <div class="trip-info">
                 <div class="info-item">
@@ -664,6 +678,15 @@ async function selectTrip(trip: TripSummary) {
   console.log('Trip completo:', trip)
   console.log('frequencySegment:', trip.frequencySegment)
   console.log('routeId directo:', trip.routeId)
+  console.log('mainDriverId:', trip.mainDriverId)
+  console.log('driverName:', trip.driverName)
+  
+  // Validar que el trip tenga conductor asignado
+  if (!trip.mainDriverId && !trip.driverId && !trip.driverName && !trip.mainDriverName) {
+    notifyError('Este viaje no tiene conductor asignado. Por favor contacte al administrador.')
+    console.warn('Trip sin conductor:', trip)
+    return
+  }
   
   selectedTrip.value = trip
   selectedSeats.value = []
@@ -1863,6 +1886,14 @@ function handleNewSale() {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.trip-tags {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .trip-route {
