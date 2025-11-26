@@ -1,3 +1,5 @@
+import { getRouteRoles } from '../../router/permissions'
+
 export type MenuItem = {
   label: string
   path: string
@@ -6,17 +8,16 @@ export type MenuItem = {
 }
 
 export const adminMenu: MenuItem[] = [
-  { label: 'Dashboard', path: '/admin', icon: 'pi pi-home', roles: ['ADMIN', 'COOPERATIVE', 'CLERK'] },
-  { label: 'Cooperativas', path: '/admin/cooperatives', icon: 'pi pi-building', roles: ['ADMIN'] },
-  { label: 'Usuarios', path: '/admin/users', icon: 'pi pi-users', roles: ['ADMIN', 'COOPERATIVE'] },
-  { label: 'Roles', path: '/admin/roles', icon: 'pi pi-lock', roles: ['ADMIN'] },
-  { label: 'Reportes', path: '/admin/reports', icon: 'pi pi-chart-line', roles: ['ADMIN', 'COOPERATIVE', 'CLERK'] },
-  { label: 'Frecuencias', path: '/admin/frequencies', icon: 'pi pi-clock', roles: ['COOPERATIVE','ADMIN'] },
-  { label: 'Hoja de Ruta', path: '/admin/route-sheet', icon: 'pi pi-calendar', roles: ['COOPERATIVE','ADMIN'] },
-  { label: 'Buses', path: '/admin/buses', icon: 'pi pi-car', roles: ['COOPERATIVE','ADMIN'] },
-  { label: 'Conductores', path: '/admin/drivers', icon: 'pi pi-user', roles: ['COOPERATIVE','ADMIN'] },
-  { label: 'Ventas', path: '/admin/sales', icon: 'pi pi-money-bill', roles: ['COOPERATIVE', 'ADMIN', 'CLERK'] },
-  { label: 'Venta de Boletos', path: '/admin/tickets', icon: 'pi pi-ticket', roles: ['COOPERATIVE', 'CLERK','ADMIN'] },
-  { label: 'Personalizar', path: '/admin/personalize', icon: 'pi pi-palette', roles: ['ADMIN', 'COOPERATIVE'] },
-  { label: 'Perfil', path: '/profile', icon: 'pi pi-user' },
+  { label: 'Dashboard', path: '/admin', icon: 'pi pi-home', roles: getRouteRoles('AdminDashboard') },
+  { label: 'Cooperativas', path: '/admin/cooperatives', icon: 'pi pi-building', roles: getRouteRoles('AdminCooperatives') },
+  { label: 'Usuarios', path: '/admin/users', icon: 'pi pi-users', roles: getRouteRoles('AdminUsers') },
+  { label: 'Roles', path: '/admin/roles', icon: 'pi pi-lock', roles: getRouteRoles('AdminRoles') },
+  { label: 'Reportes', path: '/admin/reports', icon: 'pi pi-chart-line', roles: getRouteRoles('AdminReports') },
+  { label: 'Frecuencias', path: '/admin/frequencies', icon: 'pi pi-clock', roles: getRouteRoles('AdminFrequencies') },
+  { label: 'Hoja de Ruta', path: '/admin/route-sheet', icon: 'pi pi-calendar', roles: getRouteRoles('AdminRouteSheet') },
+  { label: 'Buses', path: '/admin/buses', icon: 'pi pi-car', roles: getRouteRoles('AdminBuses') },
+  { label: 'Conductores', path: '/admin/drivers', icon: 'pi pi-user', roles: getRouteRoles('AdminDrivers') },
+  { label: 'Ventas', path: '/admin/sales', icon: 'pi pi-money-bill', roles: getRouteRoles('AdminSales') },
+  { label: 'Venta de Boletos', path: '/admin/tickets', icon: 'pi pi-ticket', roles: getRouteRoles('AdminTickets') },
+  { label: 'Personalizar', path: '/admin/personalize', icon: 'pi pi-palette', roles: getRouteRoles('AdminPersonalize') },
 ]

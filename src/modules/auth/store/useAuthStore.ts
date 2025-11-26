@@ -35,16 +35,14 @@ export const useAuthStore = defineStore('auth', () => {
     try { localStorage.removeItem('auth_user') } catch (e) { /* ignore */ }
   }
 
-  function restoreFromStorage() {
+  async function restoreFromStorage() {
     try {
-      // Si ya tenemos token en memoria (por ejemplo después de login), no sobreescribimos
       if (token.value) return
 
       const t = localStorage.getItem('auth_token')
       if (t) {
         token.value = t
         setAuthToken(t)
-        // Restaurar user desde storage local para no depender de /me
         try {
           const raw = localStorage.getItem('auth_user')
           if (raw && !user.value) {

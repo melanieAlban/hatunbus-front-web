@@ -34,6 +34,7 @@ const customization = useCooperativeCustomization()
 
 // Cargar customización al montar
 onMounted(async () => {
+  await auth.restoreFromStorage()
   await customization.loadCooperativeCustomization()
 })
 
