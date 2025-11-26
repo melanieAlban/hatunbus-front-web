@@ -1,10 +1,12 @@
 <template>
   <router-view />
   <Notifier />
+  <Toast />
 </template>
 
 <script setup>
 import Notifier from './components/ui/Notifier.vue'
+import Toast from 'primevue/toast'
 </script>
 
 <style>

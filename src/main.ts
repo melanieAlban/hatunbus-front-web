@@ -5,6 +5,8 @@ import "./style.css";
 import "./styles/theme.css";
 
 import PrimeVue from "primevue/config";
+import Tooltip from "primevue/tooltip";
+import ToastService from "primevue/toastservice";
 import "primeicons/primeicons.css";
 
 import App from "./App.vue";
@@ -21,6 +23,8 @@ app.use(PrimeVue, {
     },
   },
 });
+app.use(ToastService);
+app.directive("tooltip", Tooltip);
 app.use(router);
 
 app.mount("#app");

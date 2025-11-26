@@ -77,6 +77,22 @@ export async function deactivateCooperative(id: string): Promise<void> {
   await apiClient.patch(`${BASE}/${id}/desactivar`)
 }
 
+export interface CustomizationPayload {
+  logoBase64?: string | null
+  primaryColor?: string | null
+  secondaryColor?: string | null
+}
+
+export async function updateCustomization(id: string, payload: CustomizationPayload): Promise<CooperativeDto> {
+  const res = await apiClient.put(`${BASE}/${id}/customization`, payload)
+  return res.data as CooperativeDto
+}
+
+export async function getCooperativeLogo(id: string): Promise<Blob> {
+  const res = await apiClient.get(`${BASE}/${id}/logo`, { responseType: 'blob' })
+  return res.data as Blob
+}
+
 export default {
   listCooperatives,
   listActiveCooperatives,
@@ -87,5 +103,7 @@ export default {
   updateCooperativeMultipart,   // ⬅️ Y ESTO
   deleteCooperative,
   deactivateCooperative,
+  updateCustomization,
+  getCooperativeLogo,
 }
 

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw, RouteLocationNormalized, NavigationGuardNext } from 'vue-router'
+import { getRouteRoles } from './permissions'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -22,18 +23,19 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../layouts/AdminLayout.vue'),
     meta: { requiresAuth: true },
     children: [
-      { path: '', name: 'AdminDashboard', component: () => import('../modules/admin/views/DashboardView.vue'), meta: { requiresAuth: true, roles: ['ADMIN','COOPERATIVE','CLERK'] } },
-      { path: 'cooperatives', name: 'AdminCooperatives', component: () => import('../modules/cooperatives/views/CooperativesView.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
-      { path: 'users', name: 'AdminUsers', component: () => import('../modules/users-coop/views/UsersCoopView.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'COOPERATIVE'] } },
-      { path: 'roles', name: 'AdminRoles', component: () => import('../modules/admin/views/RolesView.vue'), meta: { requiresAuth: true, roles: ['ADMIN'] } },
-      { path: 'route-sheet', name: 'AdminRouteSheet', component: () => import('../modules/admin/views/RouteSheetView.vue'), meta: { requiresAuth: true, roles: ['COOPERATIVE','ADMIN'] } },
-      { path: 'reports', name: 'AdminReports', component: () => import('../modules/admin/views/ReportsView.vue'), meta: { requiresAuth: true, roles: ['ADMIN','COOPERATIVE','CLERK'] } },
-      { path: 'frequencies', name: 'AdminFrequencies', component: () => import('../modules/admin/views/FrequenciesView.vue'), meta: { requiresAuth: true, roles: ['COOPERATIVE'] } },
-      { path: 'buses', name: 'AdminBuses', component: () => import('../modules/buses/views/BusesView.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'COOPERATIVE'] } },
-      { path: 'drivers', name: 'AdminDrivers', component: () => import('../modules/conductores/views/DriversView.vue'), meta: { requiresAuth: true, roles: ['COOPERATIVE','ADMIN'] } },
-      { path: 'sales', name: 'AdminSales', component: () => import('../modules/sales/views/SalesView.vue'), meta: { requiresAuth: true, roles: ['COOPERATIVE','ADMIN','CLERK'] } },
-      { path: 'tickets', name: 'AdminTickets', component: () => import('../modules/tickets/views/TicketSaleView.vue'), meta: { requiresAuth: true, roles: ['COOPERATIVE','CLERK','ADMIN'] } },
-      { path: 'personalize', name: 'AdminPersonalize', component: () => import('../modules/admin/views/PersonalizeView.vue'), meta: { requiresAuth: true, roles: ['ADMIN','COOPERATIVE'] } },
+      { path: '', name: 'AdminDashboard', component: () => import('../modules/admin/views/DashboardView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminDashboard') } },
+      { path: 'cooperatives', name: 'AdminCooperatives', component: () => import('../modules/cooperatives/views/CooperativesView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminCooperatives') } },
+      { path: 'users', name: 'AdminUsers', component: () => import('../modules/users-coop/views/UsersCoopView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminUsers') } },
+      { path: 'roles', name: 'AdminRoles', component: () => import('../modules/admin/views/RolesView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminRoles') } },
+      { path: 'route-sheet', name: 'AdminRouteSheet', component: () => import('../modules/admin/views/RouteSheetView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminRouteSheet') } },
+      { path: 'reports', name: 'AdminReports', component: () => import('../modules/admin/views/ReportsView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminReports') } },
+      { path: 'frequencies', name: 'AdminFrequencies', component: () => import('../modules/admin/views/FrequenciesView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminFrequencies') } },
+      { path: 'buses', name: 'AdminBuses', component: () => import('../modules/buses/views/BusesView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminBuses') } },
+      { path: 'drivers', name: 'AdminDrivers', component: () => import('../modules/conductores/views/DriversView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminDrivers') } },
+      { path: 'sales', name: 'AdminSales', component: () => import('../modules/sales/views/SalesView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminSales') } },
+      { path: 'tickets', name: 'AdminTickets', component: () => import('../modules/tickets/views/TicketSaleView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminTickets') } },
+      { path: 'pending-payments', name: 'AdminPendingPayments', component: () => import('../modules/payments/views/PendingPaymentsView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminPendingPayments') } },
+      { path: 'personalize', name: 'AdminPersonalize', component: () => import('../modules/admin/views/PersonalizeView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminPersonalize') } },
     ]
   },
 ]
