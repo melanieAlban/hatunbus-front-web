@@ -7,6 +7,12 @@
           <router-link :to="item.path" class="menu-link" exact-active-class="menu-link--active">
             <i v-if="item.icon" :class="item.icon + ' menu-icon'" aria-hidden="true"></i>
             <span class="menu-label">{{ item.label }}</span>
+            <Badge 
+              v-if="item.path === '/admin/pending-payments' && pendingCount > 0" 
+              :value="pendingCount" 
+              severity="warning"
+              class="payment-badge"
+            />
           </router-link>
         </li>
       </ul>
@@ -36,13 +42,40 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { adminMenu } from '../modules/admin/menu.config'
 import { useAuthStore } from '../modules/auth/store/useAuthStore'
 import Button from 'primevue/button'
+import Badge from 'primevue/badge'
+import { usePendingPaymentsNotification } from '../composables/usePendingPaymentsNotification'
 
 const auth = useAuthStore()
 const role = computed(() => (auth.user as any)?.role)
+
+// Notificaciones de pagos pendientes
+const { pendingCount, requestNotificationPermission, startPolling, stopPolling } = usePendingPaymentsNotification()
+
+// Iniciar polling si el usuario tiene permisos para ver pagos pendientes
+const userRoleUpper = computed(() => {
+  const u = auth.user as any
+  return u?.role ? String(u.role).toUpperCase() : null
+})
+
+const canSeePendingPayments = computed(() => {
+  const allowedRoles = ['ADMIN', 'CLERK', 'COOPERATIVE']
+  return userRoleUpper.value && allowedRoles.includes(userRoleUpper.value)
+})
+
+onMounted(async () => {
+  if (canSeePendingPayments.value) {
+    await requestNotificationPermission()
+    startPolling(120000) // Verificar cada 2 minutos
+  }
+})
+
+onUnmounted(() => {
+  stopPolling()
+})
 
 const visibleMenu = computed(() => {
   const roleKey = role.value ? String(role.value).toUpperCase() : null

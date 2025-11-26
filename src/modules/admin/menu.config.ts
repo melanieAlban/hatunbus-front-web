@@ -19,5 +19,6 @@ export const adminMenu: MenuItem[] = [
   { label: 'Conductores', path: '/admin/drivers', icon: 'pi pi-user', roles: getRouteRoles('AdminDrivers') },
   { label: 'Ventas', path: '/admin/sales', icon: 'pi pi-money-bill', roles: getRouteRoles('AdminSales') },
   { label: 'Venta de Boletos', path: '/admin/tickets', icon: 'pi pi-ticket', roles: getRouteRoles('AdminTickets') },
+  { label: 'Pagos Pendientes', path: '/admin/pending-payments', icon: 'pi pi-clock', roles: getRouteRoles('AdminPendingPayments') },
   { label: 'Personalizar', path: '/admin/personalize', icon: 'pi pi-palette', roles: getRouteRoles('AdminPersonalize') },
 ]

@@ -14,6 +14,7 @@ export const routePermissions: PermissionMap = {
   AdminDrivers: ['ADMIN', 'COOPERATIVE'],
   AdminSales: ['ADMIN', 'COOPERATIVE', 'CLERK'],
   AdminTickets: ['ADMIN', 'COOPERATIVE', 'CLERK'],
+  AdminPendingPayments: ['ADMIN', 'COOPERATIVE', 'CLERK'],
   AdminPersonalize: ['ADMIN', 'COOPERATIVE'],
 }
 

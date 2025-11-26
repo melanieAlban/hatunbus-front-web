@@ -34,6 +34,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'drivers', name: 'AdminDrivers', component: () => import('../modules/conductores/views/DriversView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminDrivers') } },
       { path: 'sales', name: 'AdminSales', component: () => import('../modules/sales/views/SalesView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminSales') } },
       { path: 'tickets', name: 'AdminTickets', component: () => import('../modules/tickets/views/TicketSaleView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminTickets') } },
+      { path: 'pending-payments', name: 'AdminPendingPayments', component: () => import('../modules/payments/views/PendingPaymentsView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminPendingPayments') } },
       { path: 'personalize', name: 'AdminPersonalize', component: () => import('../modules/admin/views/PersonalizeView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminPersonalize') } },
     ]
   },
