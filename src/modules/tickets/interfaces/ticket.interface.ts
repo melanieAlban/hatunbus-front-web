@@ -43,6 +43,7 @@ export interface TicketDto {
   routeDestination?: string
   scheduledDepartureTime?: string
   cooperativeName?: string
+  cooperativeLogo?: string
   busPlate?: string
   busUnitNumber?: number
   

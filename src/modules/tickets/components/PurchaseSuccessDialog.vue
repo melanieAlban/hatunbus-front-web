@@ -54,8 +54,16 @@
               class="ticket-item"
             >
               <div class="ticket-header">
-                <h3>Asiento {{ ticket.seatNumber }}</h3>
-                <Tag :value="ticket.passengerType" severity="info" />
+                <div class="ticket-header-left">
+                  <h3>Asiento {{ ticket.seatNumber }}</h3>
+                  <Tag :value="ticket.passengerType" severity="info" />
+                </div>
+                <img 
+                  v-if="ticket.cooperativeLogo" 
+                  :src="ticket.cooperativeLogo" 
+                  alt="Logo cooperativa" 
+                  class="ticket-logo"
+                />
               </div>
               
               <div class="ticket-info">
@@ -156,15 +164,20 @@
   <!-- Área de Impresión (oculta) -->
   <div id="print-area" class="print-area">
     <div v-if="purchase" class="print-container">
-      <div 
-        v-for="(ticket, index) in purchase.tickets" 
-        :key="ticket.id"
-        class="print-ticket"
-        :class="{ 'page-break': index < purchase.tickets.length - 1 }"
-      >
-        <div class="print-header">
-          <h1>HATUNBUS</h1>
-          <p>Sistema de Transporte Interprovincial</p>
+        <div 
+          v-for="(ticket, index) in purchase.tickets" 
+          :key="ticket.id"
+          class="print-ticket"
+          :class="{ 'page-break': index < purchase.tickets.length - 1 }"
+        >
+          <div class="print-header">
+          <template v-if="ticket.cooperativeLogo">
+            <img :src="ticket.cooperativeLogo" alt="Logo cooperativa" class="print-logo" />
+          </template>
+          <template v-else>
+            <h1>HATUNBUS</h1>
+          </template>
+          <p>{{ ticket.cooperativeName || 'Sistema de Transporte Interprovincial' }}</p>
         </div>
 
         <div class="print-ticket-type">
@@ -423,12 +436,16 @@ function printTickets() {
   props.purchase.tickets.forEach((ticket, index) => {
     const qrImg = document.querySelector(`img[data-ticket-id="${ticket.id}"]`) as HTMLImageElement
     const qrSrc = qrImg?.src || ''
+    const logoMarkup = ticket.cooperativeLogo
+      ? `<img src="${ticket.cooperativeLogo}" class="print-logo" alt="Logo cooperativa" />`
+      : '<h1>HATUNBUS</h1>'
+    const subtitle = ticket.cooperativeName || 'Sistema de Transporte Interprovincial'
     
     ticketsHtml += `
       <div class="print-ticket" ${index < props.purchase!.tickets.length - 1 ? 'style="page-break-after: always;"' : ''}>
         <div class="print-header">
-          <h1>HATUNBUS</h1>
-          <p>Sistema de Transporte Interprovincial</p>
+          ${logoMarkup}
+          <p>${subtitle}</p>
         </div>
 
         <div class="print-ticket-type">
@@ -564,6 +581,14 @@ function printTickets() {
           font-weight: bold;
           letter-spacing: 2px;
           margin: 0;
+        }
+        
+        .print-logo {
+          max-height: 42px;
+          width: auto;
+          margin: 0 auto;
+          display: block;
+          object-fit: contain;
         }
         
         .print-header p {
@@ -821,10 +846,26 @@ function closeAndReset() {
   margin-bottom: 1rem;
 }
 
+.ticket-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .ticket-header h3 {
   margin: 0;
   color: #1a1a1a;
   font-size: 1.25rem;
+}
+
+.ticket-logo {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #fff;
+  padding: 6px;
+  border: 1px solid #e5e7eb;
 }
 
 .ticket-info, .ticket-route, .ticket-datetime, .ticket-price {
@@ -970,6 +1011,14 @@ function closeAndReset() {
     font-weight: 900;
     letter-spacing: 2px;
     text-transform: uppercase;
+  }
+
+  .print-logo {
+    max-height: 64px;
+    width: auto;
+    margin: 0 auto;
+    display: block;
+    object-fit: contain;
   }
 
   .print-header p {

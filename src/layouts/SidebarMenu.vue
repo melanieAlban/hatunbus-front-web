@@ -121,13 +121,13 @@ function onLogout() {
 .menu-link:hover {
   background: rgba(0, 0, 0, 0.05);
   color: var(--app-text);
-  border-left-color: var(--gray-medium);
+  border-left-color: var(--sidebar-accent, var(--app-accent));
 }
 
 .menu-link--active {
-  background: var(--app-accent);
+  background: var(--sidebar-accent, var(--app-accent));
   color: var(--white-bone);
-  border-left-color: var(--app-accent);
+  border-left-color: var(--sidebar-accent, var(--app-accent));
   font-weight: 500;
 }
 
@@ -137,7 +137,7 @@ function onLogout() {
 
 .menu-icon {
   font-size: 1.2rem;
-  color: var(--app-accent);
+  color: var(--sidebar-accent, var(--app-accent));
   width: 24px;
   text-align: center;
   transition: color 0.2s ease;
@@ -207,14 +207,14 @@ function onLogout() {
 }
 
 .logout-btn {
-  color: var(--app-accent) !important;
+  color: var(--sidebar-accent, var(--app-accent)) !important;
   width: 32px;
   height: 32px;
   flex-shrink: 0;
 }
 
 .logout-btn:hover {
-  background: var(--app-accent) !important;
+  background: var(--sidebar-accent, var(--app-accent)) !important;
   color: white !important;
 }
 </style>

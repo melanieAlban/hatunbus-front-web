@@ -1,9 +1,9 @@
 <template>
   <div class="admin-layout">
-    <header class="admin-header">
+    <header class="admin-header" :style="headerStyles">
       <div class="brand">
-        <img :src="logo" alt="HatunBus" class="logo-img" />
-        <span class="title">HatunBus</span>
+        <img :src="currentLogo" alt="Logo" class="logo-img" />
+        <span class="title">{{ customization.name }}</span>
       </div>
       <div class="header-actions">
         <Button icon="pi pi-bell" class="notif-btn" text aria-label="Notificaciones" />
@@ -11,7 +11,7 @@
     </header>
 
     <div class="admin-content">
-      <aside class="sidebar">
+      <aside class="sidebar" :style="sidebarStyles">
         <SidebarMenu />
       </aside>
       <main class="main-content">
@@ -22,13 +22,36 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import SidebarMenu from '../layouts/SidebarMenu.vue'
 import { useAuthStore } from '../modules/auth/store/useAuthStore'
+import { useCooperativeCustomization } from '../composables/useCooperativeCustomization'
 import Button from 'primevue/button'
-import logo from '../assets/hatunbus2-logo.png'
+import defaultLogo from '../assets/hatunbus2-logo.png'
 
 const auth = useAuthStore()
+const customization = useCooperativeCustomization()
+
+// Cargar customización al montar
+onMounted(async () => {
+  await customization.loadCooperativeCustomization()
+})
+
+// Logo: usa el de la cooperativa si existe, sino el default
+const currentLogo = computed(() => {
+  return customization.logo.value || defaultLogo
+})
+
+// Estilos dinámicos para header
+const headerStyles = computed(() => ({
+  background: `linear-gradient(90deg, ${customization.colors.value.primary}, ${customization.colors.value.secondary})`,
+  color: 'white',
+}))
+
+// Estilos dinámicos para sidebar
+const sidebarStyles = computed(() => ({
+  '--sidebar-accent': customization.colors.value.primary,
+}))
 
 function onLogout() {
   auth.logoutAction()
@@ -62,11 +85,11 @@ const userName = computed(() => {
   justify-content: space-between;
   align-items: center;
   padding: 0.5rem 1.5rem;
-  border-bottom: 1px solid var(--gray-medium);
-  background: var(--card-bg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   height: 80px;
   flex-shrink: 0;
   width: 100%;
+  transition: background 0.3s ease;
 }
 
 .brand {
@@ -79,13 +102,13 @@ const userName = computed(() => {
   margin-right: 0.5rem;
   margin-top: 0.5rem;
   margin-bottom: 0.5rem;
-    
+  object-fit: contain;
 }
 
 .brand .title{
-  font-weight:700;
-  font-size:1.15rem;
-  color:var(--app-text);
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: white;
 }
 
 .header-actions {
