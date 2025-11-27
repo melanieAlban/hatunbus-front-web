@@ -35,7 +35,6 @@ export interface TicketDto {
   id: string
   purchaseId: string
   tripId: string
-  tripSeatId?: string
   
   // Trip data
   routeName?: string

@@ -131,6 +131,47 @@
           </div>
         </div>
 
+        <!-- Fila 5: Conductor -->
+        <div class="form-row">
+          <div class="form-group">
+            <label class="p-label">Conductor *</label>
+            <Dropdown
+              v-model="modelLocal.driverId"
+              :options="availableDriverOptions"
+              optionLabel="name"
+              optionValue="id"
+              placeholder="Seleccionar conductor"
+              :loading="loadingDrivers"
+              :class="{ 'p-invalid': errors.driverId }"
+              class="w-full"
+            >
+              <template #option="slotProps">
+                <div class="driver-option">
+                  <div class="driver-option-main">
+                    <i class="pi pi-id-card"></i>
+                    <span>{{ slotProps.option.name }}</span>
+                  </div>
+                  <div class="driver-option-meta">
+                    <small v-if="slotProps.option.license">Licencia: {{ slotProps.option.license }}</small>
+                    <small
+                      v-if="slotProps.option.assignedBusId && (!props.model || slotProps.option.assignedBusId !== props.model.id)"
+                      class="assigned-tag"
+                    >
+                      Asignado a otro bus
+                    </small>
+                  </div>
+                </div>
+              </template>
+            </Dropdown>
+            <small v-if="errors.driverId" class="p-error">{{ errors.driverId }}</small>
+            <small class="field-hint">Cada conductor solo puede estar asignado a un bus.</small>
+          </div>
+
+          <div class="form-group">
+            <!-- espacio -->
+          </div>
+        </div>
+
         <!-- Fila 5: Cooperativa (solo para ADMIN o mostrar en edición) -->
         <div class="form-row" v-if="!isCooperative">
           <div class="form-group">
@@ -280,6 +321,15 @@ import Tooltip from 'primevue/tooltip'
 import { BusStatus, type BusDto, type CreateBusRequest, type UpdateBusPayload } from '../interfaces/bus.interface'
 import { useCooperativeStore } from '../../cooperatives/store/useCooperativeStore'
 import { useAuthStore } from '../../auth/store/useAuthStore'
+import type { DriverDto } from '../../conductores/interfaces/driver.interface'
+import driverService from '../../conductores/services/driverService'
+
+type DriverOption = {
+  id: string
+  name: string
+  license?: string | null
+  assignedBusId?: string | null
+}
 
 const props = defineProps<{ 
   visible?: boolean; 
@@ -298,6 +348,14 @@ const coopStore = useCooperativeStore()
 const cooperativesOptions = ref<any[]>([])
 const authStore = useAuthStore()
 const isCooperative = computed(() => authStore.user?.role === 'COOPERATIVE')
+const driverOptions = ref<DriverOption[]>([])
+const loadingDrivers = ref(false)
+const availableDriverOptions = computed(() => {
+  return driverOptions.value.filter(option => {
+    if (!option.assignedBusId) return true
+    return props.model?.id && option.assignedBusId === props.model.id
+  })
+})
 
 const statusOptions = ref([
   { label: 'Activo', value: BusStatus.ACTIVE },
@@ -317,6 +375,7 @@ const modelLocal = reactive<any>({
   seatCount: null,
   status: BusStatus.ACTIVE,
   cooperativeId: null,
+  driverId: null,
   totalKilometers: null,
   lastMaintenanceDate: null,
   nextMaintenanceKm: null,
@@ -324,6 +383,54 @@ const modelLocal = reactive<any>({
 })
 
 const errors = reactive<any>({})
+
+const mapDriverToOption = (driver: DriverDto): DriverOption => ({
+  id: driver.id,
+  name: driver.userName || driver.licenseNumber || 'Conductor',
+  license: driver.licenseNumber,
+  assignedBusId: driver.assignedBusId || null
+})
+
+async function loadDriversByCooperative(cooperativeId?: string | null) {
+  if (!cooperativeId) {
+    driverOptions.value = []
+    modelLocal.driverId = null
+    return
+  }
+
+  loadingDrivers.value = true
+  try {
+    const drivers = await driverService.listActiveByCooperative(cooperativeId)
+    driverOptions.value = drivers.map(mapDriverToOption)
+    ensureCurrentDriverOption()
+  } catch (error) {
+    console.error('[BusForm] Error loading drivers:', error)
+  } finally {
+    loadingDrivers.value = false
+  }
+}
+
+function ensureCurrentDriverOption() {
+  if (!modelLocal.driverId) return
+  const exists = driverOptions.value.some(option => option.id === modelLocal.driverId)
+  if (!exists && props.model?.driverId === modelLocal.driverId) {
+    driverOptions.value.push({
+      id: modelLocal.driverId,
+      name: props.model?.driverName || 'Conductor asignado',
+      license: props.model?.driverLicenseNumber || null,
+      assignedBusId: props.model?.id || null
+    })
+  }
+}
+
+watch(() => modelLocal.cooperativeId, (newId) => {
+  if (newId) {
+    loadDriversByCooperative(newId)
+  } else {
+    driverOptions.value = []
+    modelLocal.driverId = null
+  }
+})
 
 function formatPlate() {
   // Formatear placa automáticamente AAA-1234
@@ -383,10 +490,12 @@ watch(() => props.model, (v) => {
     modelLocal.seatCount = v.seatCount || null
     modelLocal.status = v.status || BusStatus.ACTIVE
     modelLocal.cooperativeId = v.cooperativeId || null
+    modelLocal.driverId = v.driverId || null
     modelLocal.totalKilometers = v.totalKilometers || null
     modelLocal.lastMaintenanceDate = v.lastMaintenanceDate ? new Date(v.lastMaintenanceDate) : null
     modelLocal.nextMaintenanceKm = v.nextMaintenanceKm || null
     modelLocal.photo = v.photo || null
+    ensureCurrentDriverOption()
   } else {
     resetForm()
   }
@@ -402,16 +511,22 @@ function resetForm() {
   modelLocal.seatCount = null
   modelLocal.status = BusStatus.ACTIVE
   modelLocal.cooperativeId = null
+  modelLocal.driverId = null
   modelLocal.totalKilometers = null
   modelLocal.lastMaintenanceDate = null
   modelLocal.nextMaintenanceKm = null
   modelLocal.photo = null
   photoFile.value = null
+  driverOptions.value = []
 
   // Limpiar errores
   Object.keys(errors).forEach(key => {
     errors[key] = ''
   })
+
+  if (isCooperative.value && authStore.user?.cooperativeId) {
+    modelLocal.cooperativeId = authStore.user.cooperativeId
+  }
 }
 
 function onVisibleChange(value: boolean) {
@@ -429,16 +544,16 @@ function onCancel() {
 
 onMounted(async () => {
   try {
-    // asegurar restauración de sesión si existe
     try { authStore.restoreFromStorage() } catch (e) { /* ignore */ }
 
     await coopStore.fetchAll()
     cooperativesOptions.value = (coopStore.items || []).map((c: any) => ({ id: c.id, name: c.name }))
 
-    // Si el usuario es COOPERATIVE, establecer automáticamente su cooperativa
     if (isCooperative.value && authStore.user?.cooperativeId) {
       modelLocal.cooperativeId = authStore.user.cooperativeId
     }
+
+    await loadDriversByCooperative(modelLocal.cooperativeId || authStore.user?.cooperativeId || null)
   } catch (e) {
     console.error('[BusForm] error loading cooperatives:', e)
   }
@@ -495,12 +610,18 @@ function validate(): boolean {
     isValid = false
   }
 
+  if (!modelLocal.driverId) {
+    errors.driverId = 'Debes seleccionar un conductor'
+    isValid = false
+  }
+
   return isValid
 }
 
 function toCreatePayload(): CreateBusRequest {
   const payload: CreateBusRequest = {
     cooperativeId: modelLocal.cooperativeId || authStore.user?.cooperativeId || '',
+    driverId: modelLocal.driverId || '',
     plate: modelLocal.plate.trim(),
     chassisBrand: modelLocal.chassisBrand.trim(),
     chassisNumber: modelLocal.chassisNumber?.trim() || null,
@@ -526,6 +647,7 @@ function toCreatePayload(): CreateBusRequest {
 function toUpdatePayload(): UpdateBusPayload {
   const payload: UpdateBusPayload = {
     cooperativeId: modelLocal.cooperativeId || authStore.user?.cooperativeId,
+    driverId: modelLocal.driverId || undefined,
     plate: modelLocal.plate?.trim(),
     chassisBrand: modelLocal.chassisBrand?.trim(),
     chassisNumber: modelLocal.chassisNumber?.trim() || null,
@@ -618,6 +740,32 @@ function onSubmit() {
   font-size: 0.8rem;
   margin-top: 0.25rem;
   display: block;
+}
+.driver-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.driver-option-main {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+.driver-option-main i {
+  font-size: 0.9rem;
+  color: var(--app-accent);
+}
+.driver-option-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-color-secondary);
+}
+.assigned-tag {
+  color: #c32020;
+  font-weight: 600;
 }
 
 .file-hint {
@@ -756,3 +904,4 @@ function onSubmit() {
   }
 }
 </style>
+

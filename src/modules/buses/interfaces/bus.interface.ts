@@ -13,6 +13,9 @@ export interface BusDto {
   id: string
   cooperativeId: string
   cooperativeName?: string
+  driverId: string
+  driverName?: string | null
+  driverLicenseNumber?: string | null
   plate: string
   chassisBrand: string
   chassisNumber?: string | null
@@ -31,6 +34,7 @@ export interface BusDto {
 
 export interface CreateBusRequest {
   cooperativeId: string
+  driverId: string
   plate: string
   chassisBrand: string
   chassisNumber?: string | null
@@ -44,6 +48,7 @@ export interface CreateBusRequest {
 
 export interface UpdateBusPayload {
   cooperativeId?: string
+  driverId?: string
   plate?: string
   chassisBrand?: string
   chassisNumber?: string | null
