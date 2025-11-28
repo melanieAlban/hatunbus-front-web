@@ -256,27 +256,67 @@
               <small><i class="pi pi-arrow-down"></i> Pasillo central <i class="pi pi-arrow-down"></i></small>
             </div>
             
+          <div class="seat-bus-shell">
+            <div class="bus-label front">Frente</div>
             <div class="seat-grid">
               <div
-                v-for="seat in seatNumbers"
-                :key="seat"
-                class="seat-item"
-                :class="{
-                  'selected': selectedSeats.includes(seat),
-                  'occupied': occupiedSeats.includes(seat),
-                  'disabled': occupiedSeats.includes(seat) || (selectedSeats.length >= passengerCount && !selectedSeats.includes(seat)),
-                  'aisle-right': parseInt(seat) % 4 === 2
-                }"
-                @click="toggleSeat(seat)"
+                v-for="(row, rowIndex) in seatRowBlocks"
+                :key="`seat-row-${rowIndex}`"
+                class="seat-row"
               >
-                <div class="seat-shape">
-                  <div class="seat-back"></div>
-                  <div class="seat-cushion">
-                    <span class="seat-number">{{ seat }}</span>
+                <div class="seat-side">
+                  <div
+                    v-for="(cell, columnIndex) in row.left"
+                    :key="`seat-left-${rowIndex}-${columnIndex}`"
+                    class="seat-slot"
+                  >
+                    <button
+                      v-if="cell"
+                      type="button"
+                      class="seat-item"
+                      :class="{
+                        'selected': selectedSeats.includes(cell.seatCode),
+                        'occupied': cell.status !== 'available',
+                        'disabled': cell.status !== 'available' || (selectedSeats.length >= passengerCount && !selectedSeats.includes(cell.seatCode))
+                      }"
+                      @click="toggleSeat(cell.seatCode)"
+                    >
+                      <span class="seat-number">{{ cell.seatCode }}</span>
+                    </button>
+                    <div v-else class="seat-placeholder"></div>
+                  </div>
+                </div>
+
+                <div class="bus-aisle">
+                  <span v-if="rowIndex === 0">Pasillo</span>
+                </div>
+
+                <div class="seat-side">
+                  <div
+                    v-for="(cell, columnIndex) in row.right"
+                    :key="`seat-right-${rowIndex}-${columnIndex}`"
+                    class="seat-slot"
+                  >
+                    <button
+                      v-if="cell"
+                      type="button"
+                      class="seat-item"
+                      :class="{
+                        'selected': selectedSeats.includes(cell.seatCode),
+                        'occupied': cell.status !== 'available',
+                        'disabled': cell.status !== 'available' || (selectedSeats.length >= passengerCount && !selectedSeats.includes(cell.seatCode))
+                      }"
+                      @click="toggleSeat(cell.seatCode)"
+                    >
+                      <span class="seat-number">{{ cell.seatCode }}</span>
+                    </button>
+                    <div v-else class="seat-placeholder"></div>
                   </div>
                 </div>
               </div>
             </div>
+            <div class="bus-label back">Salida</div>
+          </div>
           </div>
         </template>
       </Card>
@@ -452,7 +492,7 @@ import Tag from 'primevue/tag'
 import { useTicketStore } from '../store/useTicketStore'
 import { useCooperativeStore } from '../../cooperatives/store/useCooperativeStore'
 import { useAuthStore } from '../../auth/store/useAuthStore'
-import type { TripSummary, RequestTicketDto, PassengerType, PaymentMethod, CreatePurchaseRequest, PurchaseType, StopDto, PurchaseDto, RouteDto } from '../interfaces/ticket.interface'
+import type { TripSummary, RequestTicketDto, PassengerType, PaymentMethod, CreatePurchaseRequest, PurchaseType, StopDto, PurchaseDto, RouteDto, SeatAvailability } from '../interfaces/ticket.interface'
 import { success, error as notifyError } from '../../../lib/notifier'
 import * as cityService from '../services/cityService'
 import * as ticketService from '../services/ticketService'
@@ -474,7 +514,17 @@ const selectedCooperative = ref<string>()
 const selectedTrip = ref<TripSummary | null>(null)
 const passengerCount = ref(1)
 const selectedSeats = ref<string[]>([])
-const occupiedSeats = ref<string[]>([])
+const seatAvailability = ref<SeatAvailability[]>([])
+const occupiedSeats = computed(() =>
+  seatAvailability.value
+    .filter(seat => seat.status !== 'available')
+    .map(seat => seat.seatCode)
+)
+
+watch(seatAvailability, (layout) => {
+  const validCodes = layout.map(seat => seat.seatCode)
+  selectedSeats.value = selectedSeats.value.filter(code => validCodes.includes(code))
+}, { deep: true })
 const routeStops = ref<StopDto[]>([])
 const selectedRoute = ref<RouteDto | null>(null)
 const paymentMethod = ref<string>('CASH')
@@ -538,31 +588,43 @@ const destinationCities = computed(() => {
   return filtered
 })
 
-const seatNumbers = computed(() => {
-  if (!selectedTrip.value) return []
-  const count = selectedTrip.value.busSeatsCount || 40
-  
-  // Generar asientos en formato backend: V1, P1, V2, P2, V3, P3...
-  // V = Ventana (columnas 1 y 4), P = Pasillo (columnas 2 y 3)
-  const seats: string[] = []
-  let vCounter = 1
-  let pCounter = 1
-  
-  for (let i = 1; i <= count; i++) {
-    // En una fila de 4 asientos: posiciones 1,2,3,4
-    const positionInRow = ((i - 1) % 4) + 1
-    
-    // Posiciones 1 y 4 son ventana, 2 y 3 son pasillo
-    if (positionInRow === 1 || positionInRow === 4) {
-      seats.push(`V${vCounter}`)
-      vCounter++
-    } else {
-      seats.push(`P${pCounter}`)
-      pCounter++
+const seatMatrix = computed(() => {
+  if (!seatAvailability.value.length) return []
+
+  const maxRow = seatAvailability.value.reduce(
+    (max, seat) => Math.max(max, seat.row ?? 0),
+    0
+  )
+  const maxCol = seatAvailability.value.reduce(
+    (max, seat) => Math.max(max, seat.column ?? 0),
+    0
+  )
+
+  if (!maxRow || !maxCol) return []
+
+  const map = new Map<string, SeatAvailability>()
+  seatAvailability.value.forEach(seat => {
+    if (seat.row && seat.column) {
+      map.set(`${seat.row}-${seat.column}`, seat)
     }
+  })
+
+  const matrix: (SeatAvailability | null)[][] = []
+  for (let row = 1; row <= maxRow; row++) {
+    const rowItems: (SeatAvailability | null)[] = []
+    for (let column = 1; column <= maxCol; column++) {
+      rowItems.push(map.get(`${row}-${column}`) || null)
+    }
+    matrix.push(rowItems)
   }
-  
-  return seats
+  return matrix
+})
+
+const seatRowBlocks = computed(() => {
+  return seatMatrix.value.map(row => ({
+    left: row.slice(0, 2),
+    right: row.slice(2)
+  }))
 })
 
 const passengerTypes = [
@@ -690,7 +752,7 @@ async function selectTrip(trip: TripSummary) {
   
   selectedTrip.value = trip
   selectedSeats.value = []
-  occupiedSeats.value = []
+  seatAvailability.value = []
   passengers.value = []
   routeStops.value = []
   selectedRoute.value = null
@@ -839,28 +901,24 @@ async function onCooperativeChange() {
   await loadTripsForCooperative(selectedCooperative.value)
 }
 
-async function onTripChange() {
-  selectedSeats.value = []
-  occupiedSeats.value = []
-  passengers.value = []
-  
-  if (!selectedTrip.value) return
-  
-  loading.value = true
-  try {
-    // Cargar asientos ocupados desde el backend
-    const tickets = await ticketStore.loadTicketsByTrip(selectedTrip.value.id)
-    occupiedSeats.value = tickets.map(t => t.seatNumber)
-    console.log('Asientos ocupados cargados:', occupiedSeats.value)
-  } catch (err: any) {
-    console.warn('No se pudieron cargar asientos ocupados, continuando sin esa información:', err.response?.data?.message || err.message)
-    // Si hay error de permisos o el endpoint no está disponible, asumir que no hay asientos ocupados
-    // Esto permite continuar con la venta normalmente
-    occupiedSeats.value = []
-  } finally {
-    loading.value = false
+  async function onTripChange() {
+    selectedSeats.value = []
+    passengers.value = []
+    seatAvailability.value = []
+    
+    if (!selectedTrip.value) return
+    
+    loading.value = true
+    try {
+      const availability = await ticketService.getSeatAvailability(selectedTrip.value.id)
+      seatAvailability.value = availability
+    } catch (err: any) {
+      console.warn('No se pudieron cargar los asientos del viaje:', err.response?.data?.message || err.message)
+      seatAvailability.value = []
+    } finally {
+      loading.value = false
+    }
   }
-}
 
 function incrementPassengerCount() {
   if (selectedTrip.value && passengerCount.value < (selectedTrip.value.availableSeats || 50)) {
@@ -1109,7 +1167,7 @@ function resetForm() {
   selectedSeats.value = []
   passengers.value = []
   paymentMethod.value = 'CASH'
-  occupiedSeats.value = []
+  seatAvailability.value = []
   completedPurchase.value = null
   selectedRoute.value = null
 }
@@ -1432,126 +1490,137 @@ function handleNewSale() {
   color: #8B7355;
 }
 
+.seat-bus-shell {
+  background: linear-gradient(145deg, #fdfdfd, #f2f4f8);
+  border: 2px solid #dbe1f0;
+  border-radius: 24px;
+  padding: 1.5rem 1rem;
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.bus-label {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  letter-spacing: 1px;
+  color: #7a8297;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.bus-label.front {
+  top: 8px;
+}
+
+.bus-label.back {
+  bottom: 8px;
+}
+
 .seat-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.5rem 0.5rem;
+}
+
+.seat-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.seat-side {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
-  max-width: 420px;
-  margin: 0 auto;
-  padding: 1.5rem;
-  background: rgba(255, 255, 255, 0.6);
-  border-radius: 12px;
-  border: 1px solid rgba(139, 115, 85, 0.2);
+  grid-template-columns: repeat(2, minmax(30px, 1fr));
+  gap: 0.4rem;
+  justify-items: center;
+}
+
+.seat-slot {
+  display: flex;
+  justify-content: center;
 }
 
 .seat-item {
-  aspect-ratio: 0.85;
+  width: 38px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid #d4c7b4;
+  background: #f8f2ea;
+  color: #735c45;
+  font-weight: 600;
+  font-size: 0.8rem;
   cursor: pointer;
-  transition: all 0.3s ease;
-  user-select: none;
-  position: relative;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(90, 74, 58, 0.2);
 }
 
-.seat-item.aisle-right {
-  margin-right: 1.5rem;
+.seat-item:hover:not(.disabled):not(.occupied) {
+  background: #e7d9c8;
+  border-color: #c9a882;
 }
 
-.seat-shape {
-  width: 100%;
-  height: 100%;
-  position: relative;
-}
-
-.seat-back {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 85%;
-  height: 25%;
-  background: linear-gradient(180deg, #C9E4C5 0%, #A8D5A3 100%);
-  border-radius: 8px 8px 4px 4px;
-  border: 2px solid #81C784;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.seat-cushion {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 72%;
-  background: linear-gradient(180deg, #E8F5E9 0%, #C8E6C9 100%);
-  border-radius: 12px 12px 6px 6px;
-  border: 2px solid #81C784;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-.seat-number {
-  font-weight: 700;
-  font-size: 1rem;
-  color: #2E7D32;
-  z-index: 2;
-}
-
-.seat-item:hover:not(.disabled):not(.occupied) .seat-cushion {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
-}
-
-.seat-item:hover:not(.disabled):not(.occupied) .seat-back {
-  background: linear-gradient(180deg, #A8D5A3 0%, #81C784 100%);
-  border-color: #66BB6A;
-}
-
-.seat-item:hover:not(.disabled):not(.occupied) .seat-cushion {
-  background: linear-gradient(180deg, #C8E6C9 0%, #A5D6A7 100%);
-  border-color: #66BB6A;
-}
-
-.seat-item.selected .seat-back {
-  background: linear-gradient(180deg, #1E88E5 0%, #1565C0 100%);
-  border-color: #0D47A1;
-}
-
-.seat-item.selected .seat-cushion {
-  background: linear-gradient(180deg, #2196F3 0%, #1976D2 100%);
-  border-color: #0D47A1;
-  box-shadow: 0 4px 16px rgba(33, 150, 243, 0.5);
-}
-
-.seat-item.selected .seat-number {
+.seat-item.selected {
+  background: linear-gradient(135deg, #c9a882, #a7784c);
   color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(169, 120, 76, 0.45);
 }
 
-.seat-item.occupied .seat-back {
-  background: linear-gradient(180deg, #ef5350 0%, #e53935 100%);
-  border-color: #c62828;
-}
-
-.seat-item.occupied .seat-cushion {
-  background: linear-gradient(180deg, #ef5350 0%, #e53935 100%);
-  border-color: #c62828;
-  cursor: not-allowed;
-}
-
-.seat-item.occupied .seat-number {
-  color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+.seat-item.occupied {
+  background: #ded7cd;
+  color: #a0948a;
+  border-color: transparent;
 }
 
 .seat-item.disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
-.seat-item.disabled .seat-back,
-.seat-item.disabled .seat-cushion {
-  filter: grayscale(0.5);
+.seat-placeholder {
+  width: 38px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px dashed rgba(169, 120, 76, 0.4);
+  background: transparent;
+}
+
+.seat-number {
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.bus-aisle {
+  width: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #8B7355;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 0.65rem;
+}
+
+.bus-aisle::before {
+  content: '';
+  width: 2px;
+  height: 80%;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(139, 115, 85, 0.6),
+    rgba(139, 115, 85, 0.6) 8px,
+    transparent 8px,
+    transparent 16px
+  );
+}
+
+.bus-aisle span {
+  margin-top: 0.25rem;
 }
 
 .passenger-form {
@@ -1742,7 +1811,9 @@ function handleNewSale() {
 
 @media (max-width: 768px) {
   .seat-grid {
-    grid-template-columns: repeat(4, 1fr);
+    padding: 1rem;
+  }
+  .seat-row {
     gap: 0.5rem;
   }
   

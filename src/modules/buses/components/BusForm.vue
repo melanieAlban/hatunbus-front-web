@@ -131,6 +131,17 @@
           </div>
         </div>
 
+        <div class="form-row seat-layout-row">
+          <div class="form-group seat-layout-wrapper">
+            <SeatLayoutDesigner
+              :seat-count="modelLocal.seatCount"
+              v-model="seatLayout"
+              :readonly="!isCreate"
+            />
+            <small v-if="errors.seatLayout" class="p-error">{{ errors.seatLayout }}</small>
+          </div>
+        </div>
+
         <!-- Fila 5: Conductor -->
         <div class="form-row">
           <div class="form-group">
@@ -318,11 +329,13 @@ import Dropdown from 'primevue/dropdown'
 import Button from 'primevue/button'
 import FileUpload from 'primevue/fileupload'
 import Tooltip from 'primevue/tooltip'
-import { BusStatus, type BusDto, type CreateBusRequest, type UpdateBusPayload } from '../interfaces/bus.interface'
+import SeatLayoutDesigner from './SeatLayoutDesigner.vue'
+import { BusStatus, SeatType, type BusDto, type CreateBusRequest, type UpdateBusPayload, type SeatLayoutItem, type SeatDto } from '../interfaces/bus.interface'
 import { useCooperativeStore } from '../../cooperatives/store/useCooperativeStore'
 import { useAuthStore } from '../../auth/store/useAuthStore'
 import type { DriverDto } from '../../conductores/interfaces/driver.interface'
 import driverService from '../../conductores/services/driverService'
+import busService from '../services/busService'
 
 type DriverOption = {
   id: string
@@ -382,13 +395,35 @@ const modelLocal = reactive<any>({
   photo: null
 })
 
+const seatLayout = ref<SeatLayoutItem[]>([])
+const seatLayoutDirty = ref(false)
+let suppressSeatLayoutWatch = false
+const allowSeatLayoutEdit = computed(() => isCreate.value)
+
 const errors = reactive<any>({})
+
+watch(seatLayout, () => {
+  if (suppressSeatLayoutWatch) {
+    suppressSeatLayoutWatch = false
+    return
+  }
+  if (allowSeatLayoutEdit.value) {
+    seatLayoutDirty.value = true
+  }
+}, { deep: true })
 
 const mapDriverToOption = (driver: DriverDto): DriverOption => ({
   id: driver.id,
   name: driver.userName || driver.licenseNumber || 'Conductor',
   license: driver.licenseNumber,
   assignedBusId: driver.assignedBusId || null
+})
+
+const mapSeatToLayout = (seat: SeatDto): SeatLayoutItem => ({
+  code: seat.displayCode || `S${seat.seatNumber}`,
+  row: seat.row || Math.ceil((seat.seatNumber || 1) / 4),
+  column: seat.column || (((seat.seatNumber || 1) - 1) % 4) + 1,
+  seatType: seat.seatType || SeatType.NORMAL
 })
 
 async function loadDriversByCooperative(cooperativeId?: string | null) {
@@ -420,6 +455,23 @@ function ensureCurrentDriverOption() {
       license: props.model?.driverLicenseNumber || null,
       assignedBusId: props.model?.id || null
     })
+  }
+}
+
+async function loadSeatLayout(busId: string) {
+  suppressSeatLayoutWatch = true
+  try {
+    const seats = await busService.getBusSeats(busId)
+    seatLayout.value = seats.map(mapSeatToLayout)
+    seatLayoutDirty.value = false
+    if (allowSeatLayoutEdit.value) {
+      modelLocal.seatCount = seatLayout.value.length
+    }
+  } catch (error) {
+    console.error('[BusForm] Error loading seat layout:', error)
+    seatLayout.value = []
+  } finally {
+    suppressSeatLayoutWatch = false
   }
 }
 
@@ -478,7 +530,7 @@ function onFileSelect(event: any) {
   reader.readAsDataURL(realFile)
 }
 
-watch(() => props.model, (v) => {
+watch(() => props.model, async (v) => {
   if (v) {
     // Map DTO to form model
     modelLocal.plate = v.plate || ''
@@ -496,8 +548,13 @@ watch(() => props.model, (v) => {
     modelLocal.nextMaintenanceKm = v.nextMaintenanceKm || null
     modelLocal.photo = v.photo || null
     ensureCurrentDriverOption()
+    if (v.id) {
+      await loadSeatLayout(v.id)
+    }
   } else {
     resetForm()
+    seatLayout.value = []
+    seatLayoutDirty.value = isCreate.value
   }
 }, { immediate: true })
 
@@ -518,6 +575,8 @@ function resetForm() {
   modelLocal.photo = null
   photoFile.value = null
   driverOptions.value = []
+  seatLayout.value = []
+  seatLayoutDirty.value = isCreate.value
 
   // Limpiar errores
   Object.keys(errors).forEach(key => {
@@ -598,6 +657,16 @@ function validate(): boolean {
     isValid = false
   }
 
+  if (isCreate.value) {
+    if (!seatLayout.value.length) {
+      errors.seatLayout = 'Debes definir la distribución de asientos'
+      isValid = false
+    } else if (modelLocal.seatCount && seatLayout.value.length !== modelLocal.seatCount) {
+      errors.seatLayout = `El plano debe tener exactamente ${modelLocal.seatCount} asientos`
+      isValid = false
+    }
+  }
+
   // Status validation
   if (!modelLocal.status) {
     errors.status = 'El estado es obligatorio'
@@ -628,7 +697,8 @@ function toCreatePayload(): CreateBusRequest {
     bodyBrand: modelLocal.bodyBrand.trim(),
     bodyNumber: modelLocal.bodyNumber?.trim() || null,
     seatCount: modelLocal.seatCount,
-    unitNumber: modelLocal.unitNumber || null
+    unitNumber: modelLocal.unitNumber || null,
+    seatLayout: seatLayout.value
   }
 
   // Solo incluir photo si NO hay archivo File (para backward compatibility)
@@ -672,6 +742,10 @@ function toUpdatePayload(): UpdateBusPayload {
   // Solo incluir photo si NO hay archivo File (para backward compatibility)
   if (!photoFile.value && modelLocal.photo) {
     payload.photo = modelLocal.photo
+  }
+
+  if (seatLayoutDirty.value && seatLayout.value.length) {
+    payload.seatLayout = seatLayout.value
   }
 
   return payload
@@ -722,9 +796,17 @@ function onSubmit() {
   align-items: start;
 }
 
+.seat-layout-row {
+  grid-template-columns: 1fr;
+}
+
 .form-group {
   display: flex;
   flex-direction: column;
+}
+
+.seat-layout-wrapper {
+  width: 100%;
 }
 
 .p-label {

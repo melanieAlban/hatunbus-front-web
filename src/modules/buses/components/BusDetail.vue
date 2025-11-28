@@ -90,6 +90,22 @@
         </div>
       </div>
 
+      <!-- Sección: Plano de asientos -->
+      <div class="detail-section" v-if="seatLayoutPreview.length">
+        <div class="section-header">
+          <i class="pi pi-th-large"></i>
+          <h3>Plano de asientos</h3>
+        </div>
+        <SeatLayoutDesigner
+          :seat-count="seatLayoutPreview.length"
+          v-model="seatLayoutPreview"
+          :readonly="true"
+        />
+      </div>
+
+
+      </div>
+
       <!-- Sección: Información de Mantenimiento Actual -->
       <div class="detail-section">
         <div class="section-header">
@@ -192,8 +208,9 @@
 import { ref, computed, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
-import type { BusDto, MaintenanceRecordDto } from '../interfaces/bus.interface'
-import { getMaintenanceRecords } from '../services/busService'
+import SeatLayoutDesigner from './SeatLayoutDesigner.vue'
+import type { BusDto, MaintenanceRecordDto, SeatLayoutItem } from '../interfaces/bus.interface'
+import { getMaintenanceRecords, getBusSeats } from '../services/busService'
 
 const props = defineProps<{
   visible: boolean
@@ -207,17 +224,20 @@ const emit = defineEmits<{
 const visibleLocal = ref(props.visible)
 const loadingHistory = ref(false)
 const maintenanceHistory = ref<MaintenanceRecordDto[]>([])
+const seatLayoutPreview = ref<SeatLayoutItem[]>([])
 
 watch(() => props.visible, (val) => {
   visibleLocal.value = val
   if (val && props.bus) {
     loadMaintenanceHistory()
+    loadSeatLayout()
   }
 })
 
 watch(() => props.bus, (val) => {
   if (val && visibleLocal.value) {
     loadMaintenanceHistory()
+    loadSeatLayout()
   }
 })
 
@@ -291,6 +311,22 @@ async function loadMaintenanceHistory() {
     maintenanceHistory.value = []
   } finally {
     loadingHistory.value = false
+  }
+}
+
+async function loadSeatLayout() {
+  if (!props.bus?.id) return
+  try {
+    const seats = await getBusSeats(props.bus.id)
+    seatLayoutPreview.value = seats.map(seat => ({
+      code: seat.displayCode || `S${seat.seatNumber}`,
+      row: seat.row || 1,
+      column: seat.column || 1,
+      seatType: seat.seatType
+    }))
+  } catch (error) {
+    console.error('[BusDetail] Error loading seat layout:', error)
+    seatLayoutPreview.value = []
   }
 }
 

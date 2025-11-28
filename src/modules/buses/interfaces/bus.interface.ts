@@ -30,6 +30,7 @@ export interface BusDto {
   status: BusStatus
   createdAt?: string
   updatedAt?: string
+  seatLayout?: SeatLayoutItem[]
 }
 
 export interface CreateBusRequest {
@@ -43,7 +44,7 @@ export interface CreateBusRequest {
   seatCount: number
   unitNumber?: number | null
   photo?: string | null // Base64 para enviar al backend
-  seatsConfiguration?: Record<number, SeatType>
+  seatLayout: SeatLayoutItem[]
 }
 
 export interface UpdateBusPayload {
@@ -61,14 +62,19 @@ export interface UpdateBusPayload {
   nextMaintenanceKm?: number | null
   photo?: string | null // Base64 para enviar al backend
   status?: BusStatus
+  seatLayout?: SeatLayoutItem[]
 }
 
 export interface SeatDto {
   id: string
   busId: string
   seatNumber: number
-  type: SeatType
-  available: boolean
+  displayCode?: string | null
+  row?: number | null
+  column?: number | null
+  seatType: SeatType
+  additionalPrice?: number | null
+  status: string
 }
 
 export interface MaintenanceRecordDto {
@@ -82,4 +88,11 @@ export interface MaintenanceRecordDto {
   workshop?: string | null
   nextMaintenanceKm?: number | null
   createdAt?: string
+}
+
+export interface SeatLayoutItem {
+  code: string
+  row: number
+  column: number
+  seatType: SeatType
 }

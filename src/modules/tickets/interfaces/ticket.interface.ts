@@ -178,3 +178,12 @@ export interface TripSummary {
     [key: string]: any
   }
 }
+
+export interface SeatAvailability {
+  seatId?: string
+  seatCode: string
+  row?: number
+  column?: number
+  seatType?: string
+  status: 'available' | 'occupied'
+}
