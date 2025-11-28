@@ -9,6 +9,8 @@ export interface DriverDto {
   active: boolean
   userName?: string | null
   cooperativeName?: string | null
+  assignedBusId?: string | null
+  assignedBusPlate?: string | null
   createdAt?: string | null
   updatedAt?: string | null
 }

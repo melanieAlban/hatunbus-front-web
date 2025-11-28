@@ -1,5 +1,13 @@
 import apiClient from '../../../services/apiClient'
-import type { CreatePurchaseRequest, PurchaseDto, TicketDto, TripSummary, StopDto, RouteDto } from '../interfaces/ticket.interface'
+import type {
+  CreatePurchaseRequest,
+  PurchaseDto,
+  TicketDto,
+  TripSummary,
+  StopDto,
+  RouteDto,
+  SeatAvailability
+} from '../interfaces/ticket.interface'
 
 const BASE = '/compras'
 const TICKET_BASE = '/boletos'
@@ -34,6 +42,11 @@ export async function listPurchasesByUser(userId: string): Promise<PurchaseDto[]
 export async function listTicketsByTrip(tripId: string): Promise<TicketDto[]> {
   const res = await apiClient.get(`${TICKET_BASE}/viaje/${tripId}`)
   return res.data as TicketDto[]
+}
+
+export async function getSeatAvailability(tripId: string): Promise<SeatAvailability[]> {
+  const res = await apiClient.get(`${TRIP_BASE}/${tripId}/asientos-disponibles`)
+  return res.data as SeatAvailability[]
 }
 
 export async function searchTrips(date: string, origin: string, destination: string): Promise<TripSummary[]> {
@@ -261,6 +274,7 @@ export default {
   getPurchaseById,
   listPurchasesByUser,
   listTicketsByTrip,
+  getSeatAvailability,
   getAvailableTrips,
   searchTrips,
   getTripById,

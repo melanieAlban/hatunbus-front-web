@@ -52,6 +52,11 @@
                                     <span>Asientos</span>
                                 </div>
                             </th>
+                            <th class="table-head driver-column">
+                                <div class="header-filter">
+                                    <span>Conductor</span>
+                                </div>
+                            </th>
                             <th class="table-head status-column">
                                 <div class="header-filter">
                                     <span>Estado</span>
@@ -90,6 +95,15 @@
                                     <i class="pi pi-users"></i>
                                     {{ bus.seatCount }}
                                 </span>
+                            </td>
+                            <td class="table-cell driver-cell">
+                                <div class="driver-info">
+                                    <i class="pi pi-id-card driver-icon"></i>
+                                    <div class="driver-meta">
+                                        <span class="driver-name">{{ bus.driverName || 'Sin asignar' }}</span>
+                                        <small v-if="bus.driverLicenseNumber" class="driver-license">Licencia: {{ bus.driverLicenseNumber }}</small>
+                                    </div>
+                                </div>
                             </td>
                             <td class="table-cell status-cell">
                                 <span :class="['status-badge', `status-${bus.status.toLowerCase()}`]">
@@ -228,6 +242,7 @@ const filteredBuses = computed(() => {
                 bus.unitNumber?.toString(),
                 bus.chassisBrand,
                 bus.bodyBrand,
+                bus.driverName,
                 bus.status
             ].some(field =>
                 (field || '').toString().toLowerCase().includes(term)
@@ -500,6 +515,10 @@ watch(q, () => {
     min-width: 120px;
 }
 
+.driver-column {
+    min-width: 220px;
+}
+
 .status-column {
     min-width: 160px;
 }
@@ -545,6 +564,32 @@ watch(q, () => {
     font-weight: 600;
     background: var(--surface-50);
     color: var(--app-text);
+}
+
+.driver-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.driver-icon {
+    font-size: 1.1rem;
+    color: var(--app-accent);
+}
+
+.driver-meta {
+    display: flex;
+    flex-direction: column;
+}
+
+.driver-name {
+    font-weight: 600;
+    color: var(--app-text);
+}
+
+.driver-license {
+    color: var(--gray-medium);
+    font-size: 0.8rem;
 }
 
 /* Badges de estado */

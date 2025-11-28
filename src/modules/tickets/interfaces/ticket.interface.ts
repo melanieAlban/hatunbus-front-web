@@ -35,7 +35,6 @@ export interface TicketDto {
   id: string
   purchaseId: string
   tripId: string
-  tripSeatId?: string
   
   // Trip data
   routeName?: string
@@ -178,4 +177,13 @@ export interface TripSummary {
     routeId: string
     [key: string]: any
   }
+}
+
+export interface SeatAvailability {
+  seatId?: string
+  seatCode: string
+  row?: number
+  column?: number
+  seatType?: string
+  status: 'available' | 'occupied'
 }
