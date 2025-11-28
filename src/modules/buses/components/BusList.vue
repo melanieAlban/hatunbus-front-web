@@ -196,6 +196,7 @@ import Tooltip from 'primevue/tooltip'
 
 const props = defineProps<{ query?: string }>()
 const emit = defineEmits<{
+    (e: 'view', item: BusDto): void
     (e: 'edit', item: BusDto): void
     (e: 'delete', item: BusDto): void
 }>()

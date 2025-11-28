@@ -45,6 +45,8 @@ export interface TicketDto {
   cooperativeLogo?: string
   busPlate?: string
   busUnitNumber?: number
+  driverName?: string
+  mainDriverName?: string
   
   // Seat data
   seatNumber: string

@@ -203,7 +203,8 @@ import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import Tag from 'primevue/tag'
-import { fetchTripReport, TripReportDto, fetchTripsByDateRange, TripSummaryDto } from '../../../services/reportService'
+import { fetchTripReport, fetchTripsByDateRange } from '../../../services/reportService'
+import type { TripReportDto, TripSummaryDto } from '../../../services/reportService'
 
 const today = new Date()
 const sevenDays = new Date()
@@ -219,6 +220,15 @@ const loadingTrips = ref(false)
 const report = ref<TripReportDto | null>(null)
 const errorMessage = ref<string | null>(null)
 const trips = ref<TripSummaryDto[]>([])
+
+const statusLabels: Record<string, string> = {
+  SCHEDULED: 'Programado',
+  IN_PROGRESS: 'En curso',
+  COMPLETED: 'Completado',
+  CANCELED: 'Cancelado',
+}
+
+const getStatusText = (status?: string) => statusLabels[status ?? ''] || status || 'Sin estado'
 
 const filteredTrips = computed(() => {
   return trips.value.filter((trip) => {

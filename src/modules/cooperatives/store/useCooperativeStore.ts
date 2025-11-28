@@ -104,7 +104,8 @@ export const useCooperativeStore = defineStore('cooperatives', () => {
         items.value.splice(idx, 1, updated)
         // If the payload contained an explicit `active` value, prefer it in the UI
         if (typeof payload.active !== 'undefined') {
-          items.value[idx].active = Boolean(payload.active)
+          const target = items.value[idx]
+          if (target) target.active = Boolean(payload.active)
         }
       }
       return updated
@@ -136,7 +137,7 @@ export const useCooperativeStore = defineStore('cooperatives', () => {
     try {
       await service.deactivateCooperative(id)
       const idx = items.value.findIndex(i => i.id === id)
-      if (idx >= 0) items.value[idx].active = false
+      if (idx >= 0 && items.value[idx]) items.value[idx]!.active = false
     } catch (e: any) {
       error.value = e?.response?.data?.message || e?.message || 'Error desactivando cooperativa'
       throw e

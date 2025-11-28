@@ -146,7 +146,7 @@ export const useUserStore = defineStore('users-coop', () => {
     try {
       await service.deactivateUser(id)
       const idx = items.value.findIndex(i => i.id === id)
-      if (idx >= 0) items.value[idx].active = false
+      if (idx >= 0 && items.value[idx]) items.value[idx]!.active = false
     } catch (e: any) {
       error.value = e?.response?.data?.message || e?.message || 'Error desactivando usuario'
       throw e
@@ -161,7 +161,7 @@ export const useUserStore = defineStore('users-coop', () => {
     try {
       await service.activateUser(id)
       const idx = items.value.findIndex(i => i.id === id)
-      if (idx >= 0) items.value[idx].active = true
+      if (idx >= 0 && items.value[idx]) items.value[idx]!.active = true
     } catch (e: any) {
       error.value = e?.response?.data?.message || e?.message || 'Error activando usuario'
       throw e
