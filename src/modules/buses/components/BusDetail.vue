@@ -113,17 +113,17 @@
         <div class="info-grid">
           <div class="info-card">
             <label>Kilometraje Total</label>
-            <div class="info-value">{{ formatNumber(bus.totalKilometers) }} km</div>
+            <div class="info-value">{{ formatNumber(bus?.totalKilometers) }} km</div>
           </div>
           
           <div class="info-card">
             <label>Último Mantenimiento</label>
-            <div class="info-value">{{ formatDate(bus.lastMaintenanceDate) }}</div>
+            <div class="info-value">{{ formatDate(bus?.lastMaintenanceDate) }}</div>
           </div>
           
           <div class="info-card">
             <label>Próximo Mantenimiento</label>
-            <div class="info-value">{{ formatNumber(bus.nextMaintenanceKm) }} km</div>
+            <div class="info-value">{{ formatNumber(bus?.nextMaintenanceKm) }} km</div>
           </div>
         </div>
       </div>
@@ -177,12 +177,12 @@
         <div class="info-grid">
           <div class="info-card">
             <label>Fecha de Registro</label>
-            <div class="info-value">{{ formatDateTime(bus.createdAt) }}</div>
+            <div class="info-value">{{ formatDateTime(bus?.createdAt) }}</div>
           </div>
           
           <div class="info-card">
             <label>Última Actualización</label>
-            <div class="info-value">{{ formatDateTime(bus.updatedAt) }}</div>
+            <div class="info-value">{{ formatDateTime(bus?.updatedAt) }}</div>
           </div>
         </div>
       </div>

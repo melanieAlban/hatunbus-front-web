@@ -1,11 +1,11 @@
-import type { Toast } from 'primevue/toast'
+type ToastInstance = { add: (options: any) => void } | null
 
-let toastRef: Toast | null = null
+let toastRef: ToastInstance = null
 let confirmHandler: ((opts: ConfirmOptions) => Promise<boolean>) | null = null
 
 type ConfirmOptions = { title?: string; message: string; acceptLabel?: string; rejectLabel?: string }
 
-export function setToastRef(t: Toast | null) {
+export function setToastRef(t: ToastInstance) {
   toastRef = t
 }
 

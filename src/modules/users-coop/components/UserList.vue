@@ -273,7 +273,7 @@ const paginatedUsers = computed(() =>
 
 // Páginas visibles para la paginación
 const visiblePages = computed(() => {
-    const pages = []
+    const pages: number[] = []
     const maxVisible = 5
     let start = Math.max(1, currentPage.value - Math.floor(maxVisible / 2))
     let end = Math.min(totalPages.value, start + maxVisible - 1)

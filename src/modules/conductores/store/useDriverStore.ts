@@ -101,7 +101,7 @@ export const useDriverStore = defineStore('conductores', () => {
     try {
       await service.deactivateDriver(id)
       const idx = items.value.findIndex(i => i.id === id)
-      if (idx >= 0) items.value[idx].active = false
+      if (idx >= 0 && items.value[idx]) items.value[idx]!.active = false
     } catch (e: any) {
       error.value = e?.response?.data?.message || e?.message || 'Error desactivando conductor'
       throw e
