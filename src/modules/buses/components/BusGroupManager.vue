@@ -56,7 +56,7 @@
             </div>
             <div class="info-item">
               <i class="pi pi-users"></i>
-              <span>{{ group.template.seatCount }} asientos</span>
+              <span>{{ getRealSeatCount(group.template) }} asientos</span>
             </div>
             <div class="info-item">
               <i class="pi pi-car"></i>
@@ -111,6 +111,15 @@ import type { BusGroupDto } from '../interfaces/template.interface'
 import * as busGroupService from '../services/busGroupService'
 import { error as notifyError } from '@/lib/notifier'
 import { useAuthStore } from '@/modules/auth/store/useAuthStore'
+
+function getRealSeatCount(template: any): number {
+  // Mostrar seatCount de BD cuando el template es del sistema
+  if (template && template.seatCount != null && (template.cooperativeId === null || template.cooperativeId === undefined)) {
+    return template.seatCount
+  }
+  if (!template || !template.seatConfiguration) return template?.seatCount || 0
+  return Object.values(template.seatConfiguration).filter(v => ['NORMAL','VIP','SEMI_BED','BED'].includes(v)).length
+}
 
 const props = defineProps<{
   visible: boolean

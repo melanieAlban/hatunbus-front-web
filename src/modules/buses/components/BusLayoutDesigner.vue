@@ -498,17 +498,30 @@ function autoFill() {
 }
 
 function emitSeats() {
-  const seats = grid.value
-    .filter(c => c.type === 'seat')
-    .map(c => ({
-      number: c.number!,
-      type: c.seatType!,
-      row: Math.floor(grid.value.indexOf(c) / cols.value) + 1,
-      column: (grid.value.indexOf(c) % cols.value) + 1,
-      floor: 1
-    }))
-
-  emit('update:seats', seats)
+  // Emitir todos los elementos (asientos y especiales)
+  const items = grid.value.map((c, idx) => {
+    const row = Math.floor(idx / cols.value) + 1;
+    const column = (idx % cols.value) + 1;
+    if (c.type === 'seat') {
+      return {
+        number: c.number!,
+        type: c.seatType!,
+        row,
+        column,
+        floor: 1
+      };
+    } else if (c.type && c.type !== 'empty') {
+      return {
+        type: c.type,
+        row,
+        column,
+        floor: 1
+      };
+    } else {
+      return null;
+    }
+  }).filter(Boolean);
+  emit('update:seats', items);
 }
 
 // Inicializar

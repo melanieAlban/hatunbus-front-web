@@ -137,19 +137,18 @@ function resetForm() {
 }
 
 function onSeatsUpdated(seats: SeatLayoutItem[]) {
-  seatLayoutItems.value = seats
-  formData.value.seatCount = seats.length
-  // Construir seatConfiguration como Map<índice, tipo> (solo asientos)
-  // Asumimos que cada seat tiene row y column
-  const config: SeatConfiguration = {}
+  seatLayoutItems.value = seats;
+  // Contar solo asientos (no elementos especiales)
+  formData.value.seatCount = seats.filter(s => s.type === 'NORMAL' || s.type === 'VIP' || s.type === 'SEMI_BED' || s.type === 'BED').length;
+  // Construir seatConfiguration como Map<índice, tipo> (asientos y especiales)
+  const config: SeatConfiguration = {};
   seats.forEach(seat => {
-    // El índice se calcula igual que en el backend: (row-1)*cols + (column-1)
-    if (typeof seat.row === 'number' && typeof seat.column === 'number') {
-      const index = (seat.row - 1) * 5 + (seat.column - 1)
-      config[index] = seat.type
+    if (typeof seat.row === 'number' && typeof seat.column === 'number' && seat.type) {
+      const index = (seat.row - 1) * 5 + (seat.column - 1);
+      config[index] = seat.type;
     }
-  })
-  formData.value.seatConfiguration = config
+  });
+  formData.value.seatConfiguration = config;
 }
 
 function validate(): boolean {

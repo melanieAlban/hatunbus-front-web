@@ -1,12 +1,9 @@
-export enum SeatType {
-  NORMAL = 'NORMAL',
-  VIP = 'VIP',
-  SEMI_BED = 'SEMI_BED',
-  BED = 'BED'
-}
+export type SeatType = 'NORMAL' | 'VIP' | 'SEMI_BED' | 'BED';
+export type SpecialType = 'bathroom' | 'door' | 'stairs' | 'aisle';
+export type SeatOrSpecialType = SeatType | SpecialType;
 
 export interface SeatConfiguration {
-  [seatNumber: number]: SeatType
+  [seatNumber: number]: SeatOrSpecialType;
 }
 
 export interface BusTemplateDto {
@@ -52,13 +49,12 @@ export interface CreateBusGroupRequest {
 }
 
 export interface SeatLayoutItem {
-  number: number
-  type: SeatType
-  row: number
-  column: number
-  floor?: number
-  additionalPrice?: number
-  // Alias para compatibilidad con el componente existente
-  code?: string
-  seatType?: SeatType
+  number?: number;
+  type: SeatOrSpecialType;
+  row: number;
+  column: number;
+  floor?: number;
+  additionalPrice?: number;
+  code?: string;
+  seatType?: SeatType;
 }

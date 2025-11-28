@@ -44,7 +44,7 @@
                 :rows="calculateRows(template.seatConfiguration)"
               />
               <div class="template-stats">
-                <span><i class="pi pi-ticket"></i> {{ template.seatCount }} asientos</span>
+                <span><i class="pi pi-ticket"></i> {{ displaySeatCount(template) }} asientos</span>
                 <span v-if="getVipCount(template) > 0"><i class="pi pi-star"></i> {{ getVipCount(template) }} VIP</span>
               </div>
             </div>
@@ -70,7 +70,7 @@
                 :rows="calculateRows(template.seatConfiguration)"
               />
               <div class="template-stats">
-                <span><i class="pi pi-ticket"></i> {{ template.seatCount }} asientos</span>
+                <span><i class="pi pi-ticket"></i> {{ displaySeatCount(template) }} asientos</span>
                 <span v-if="getVipCount(template) > 0"><i class="pi pi-star"></i> {{ getVipCount(template) }} VIP</span>
               </div>
             </div>
@@ -183,6 +183,18 @@ async function onTemplateCreated() {
 function getVipCount(template: BusTemplateDto): number {
   if (!template.seatConfiguration) return 0
   return Object.values(template.seatConfiguration).filter(type => type === 'VIP').length
+}
+
+function displaySeatCount(template: BusTemplateDto): number {
+  // Si el template viene del sistema (cooperativeId nulo/undefined) preferimos el seatCount que trae la BD
+  if (template.seatCount != null && (template.cooperativeId === null || template.cooperativeId === undefined)) {
+    return template.seatCount
+  }
+  // En cualquier otro caso, calculamos el número real desde seatConfiguration
+  if (template.seatConfiguration) {
+    return Object.values(template.seatConfiguration).filter(v => ['NORMAL','VIP','SEMI_BED','BED'].includes(v)).length
+  }
+  return template.seatCount || 0
 }
 
 function calculateRows(seatConfiguration?: Record<string, any>): number {

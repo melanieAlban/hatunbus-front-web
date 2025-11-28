@@ -37,7 +37,7 @@
             <div class="template-stats">
               <span class="stat">
                 <i class="pi pi-users"></i>
-                {{ template.seatCount }} asientos
+                {{ getRealSeatCount(template) }} asientos
               </span>
               <span v-if="getVipCount(template) > 0" class="stat">
                 <i class="pi pi-star"></i>
@@ -81,12 +81,12 @@
         </div>
 
         <!-- Advertencia importante -->
-        <Message severity="warn" :closable="false">
+          <Message severity="warn" :closable="false">
           <strong>⚠️ Importante:</strong>
           Todos los buses que agregues a este grupo tendrán:
           <ul>
-            <li>{{ selectedTemplate.seatCount }} asientos</li>
-            <li>Configuración: {{ selectedTemplate.name }}</li>
+            <li>{{ selectedTemplate ? getRealSeatCount(selectedTemplate) : 0 }} asientos</li>
+            <li>Configuración: {{ selectedTemplate?.name }}</li>
             <li>Intercambiables entre sí en las hojas de ruta</li>
           </ul>
         </Message>
@@ -158,6 +158,15 @@ const formData = ref<CreateBusGroupRequest>({
 })
 
 const errors = ref<Record<string, string>>({})
+
+function getRealSeatCount(template: BusTemplateDto): number {
+  // Mostrar seatCount de BD cuando el template es del sistema
+  if (template && template.seatCount != null && (template.cooperativeId === null || template.cooperativeId === undefined)) {
+    return template.seatCount
+  }
+  if (!template || !template.seatConfiguration) return template?.seatCount || 0
+  return Object.values(template.seatConfiguration).filter(v => ['NORMAL','VIP','SEMI_BED','BED'].includes(v)).length
+}
 
 watch(() => props.visible, (val) => {
   visibleLocal.value = val

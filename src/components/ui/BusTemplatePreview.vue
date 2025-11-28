@@ -4,21 +4,25 @@
       <i class="pi pi-ban"></i>
       <small>Sin configuración</small>
     </div>
-    <div v-else class="preview-grid" :style="gridStyle">
-      <div
-        v-for="index in totalCells"
-        :key="index"
-        :class="getCellClass(index)"
-      >
-        <span v-if="getCellData(index)?.type === 'seat'" class="seat-number">
-          {{ getCellData(index)?.number }}
-        </span>
-        <i v-else-if="getCellData(index)?.type === 'bathroom'" class="pi pi-home"></i>
-        <i v-else-if="getCellData(index)?.type === 'door'" class="pi pi-sign-in"></i>
-        <i v-else-if="getCellData(index)?.type === 'stairs'" class="pi pi-chevron-up"></i>
+    <div v-else>
+      <div class="preview-grid" :style="gridStyle">
+        <div
+          v-for="index in totalCells"
+          :key="index"
+          :class="getCellClass(index)"
+        >
+          <span v-if="getCellData(index)?.type === 'seat'" class="seat-number">
+            {{ getCellData(index)?.number }}
+          </span>
+          <i v-else-if="getCellData(index)?.type === 'bathroom'" class="pi pi-home"></i>
+          <i v-else-if="getCellData(index)?.type === 'door'" class="pi pi-sign-in"></i>
+          <i v-else-if="getCellData(index)?.type === 'stairs'" class="pi pi-sort-alt"></i>
+          <i v-else-if="getCellData(index)?.type === 'aisle'" class="pi pi-box"></i>
+        </div>
       </div>
     </div>
   </div>
+
 </template>
 
 <script setup lang="ts">
@@ -68,24 +72,19 @@ const gridMap = computed(() => {
   const map = new Map<number, Cell>()
   if (!props.seatConfiguration) return map
 
-  // 1. Mapear asientos desde seatConfiguration (sin numerar aún)
+  // 1. Mapear todos los elementos desde seatConfiguration (asientos y especiales)
   const seatIndexes: number[] = []
   for (const [key, cellData] of Object.entries(props.seatConfiguration)) {
     const gridIndex = parseInt(key) + 1
     if (["NORMAL", "VIP", "SEMI_BED", "BED"].includes(cellData)) {
       seatIndexes.push(gridIndex)
       map.set(gridIndex, { type: 'seat', seatType: cellData })
+    } else if (["bathroom", "door", "stairs", "aisle"].includes(cellData)) {
+      map.set(gridIndex, { type: cellData })
     }
   }
 
-  // 2. Insertar elementos especiales en posiciones fijas según el template (solo visual)
-  // Baño (última fila, última columna)
-  const bathroomIndex = (props.rows - 1) * COLUMNS + 5
-  map.set(bathroomIndex, { type: 'bathroom' })
-  // Puerta (primera fila, primera columna)
-  map.set(1, { type: 'door' })
-
-  // 3. Numerar solo los asientos, en orden de aparición visual
+  // 2. Numerar solo los asientos, en orden de aparición visual
   let seatNumber = 1
   for (let i = 1; i <= props.rows * COLUMNS; i++) {
     const cell = map.get(i)
@@ -95,6 +94,12 @@ const gridMap = computed(() => {
   }
 
   return map
+})
+
+// Nuevo: Computar el total de asientos reales
+const realSeatCount = computed(() => {
+  if (!props.seatConfiguration) return 0
+  return Object.values(props.seatConfiguration).filter(v => ["NORMAL", "VIP", "SEMI_BED", "BED"].includes(v)).length
 })
 
 function getCellData(index: number): Cell | null {
@@ -201,6 +206,16 @@ function getCellClass(index: number): string {
   color: white;
   border: 2px solid #0284c7;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.real-seat-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: 1rem;
+  color: #0d47a1;
+  font-weight: 700;
 }
 
 .preview-cell.door {
