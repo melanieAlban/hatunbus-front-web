@@ -6,6 +6,8 @@
         <input class="search" v-model="query" placeholder="Buscar bus..." />
       </div>
       <div class="header-right">
+        <Button label="Gestionar Grupos" icon="pi pi-sitemap" @click="showGroupManager = true" class="p-button-outlined" />
+        <Button label="Templates" icon="pi pi-th-large" @click="showTemplateManager = true" class="p-button-outlined" />
         <button class="btn-primary" @click="showCreate = true">+ Crear Bus</button>
       </div>
     </header>
@@ -32,14 +34,27 @@
       @submit="(payload, file) => update(payload as UpdateBusPayload, file)"
       @cancel="() => (editing = null)"
     />
+
+    <BusGroupManager
+      :visible="showGroupManager"
+      @update:visible="val => (showGroupManager = val)"
+    />
+
+    <TemplateManager
+      :visible="showTemplateManager"
+      @update:visible="val => (showTemplateManager = val)"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import Button from 'primevue/button'
 import BusList from '../components/BusList.vue'
 import BusForm from '../components/BusForm.vue'
 import BusDetail from '../components/BusDetail.vue'
+import BusGroupManager from '../components/BusGroupManager.vue'
+import TemplateManager from '../components/TemplateManager.vue'
 import { useBusStore } from '../store/useBusStore'
 import { useCooperativeStore } from '../../cooperatives/store/useCooperativeStore'
 import { useAuthStore } from '../../auth/store/useAuthStore'
@@ -54,6 +69,8 @@ const query = ref('')
 const showCreate = ref(false)
 const editing = ref<BusDto | null>(null)
 const viewing = ref<BusDto | null>(null)
+const showGroupManager = ref(false)
+const showTemplateManager = ref(false)
 const cooperatives = ref<any[]>([])
 const selectedCoop = ref<string | null>(null)
 

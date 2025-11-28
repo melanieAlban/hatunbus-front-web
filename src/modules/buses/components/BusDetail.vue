@@ -103,9 +103,6 @@
         />
       </div>
 
-
-      </div>
-
       <!-- Sección: Información de Mantenimiento Actual -->
       <div class="detail-section">
         <div class="section-header">
