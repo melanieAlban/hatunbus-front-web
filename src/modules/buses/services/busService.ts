@@ -36,7 +36,9 @@ export async function createBus(payload: CreateBusRequest, file?: File): Promise
   
   // Excluir photo del JSON cuando hay archivo
   const { photo, ...dtoWithoutPhoto } = payload
-  const blob = new Blob([JSON.stringify(dtoWithoutPhoto)], { type: 'application/json' })
+  // Deep-clone to avoid Vue reactive proxies when stringify
+  const plain = JSON.parse(JSON.stringify(dtoWithoutPhoto))
+  const blob = new Blob([JSON.stringify(plain)], { type: 'application/json' })
   form.append('data', blob, 'data.json')
   
   if (file) {
@@ -52,7 +54,9 @@ export async function updateBus(id: string, payload: UpdateBusPayload, file?: Fi
   const form = new FormData()
   
   const { photo, ...dtoWithoutPhoto } = payload
-  const blob = new Blob([JSON.stringify(dtoWithoutPhoto)], { type: 'application/json' })
+  // Deep-clone to avoid Vue reactive proxies when stringify
+  const plain = JSON.parse(JSON.stringify(dtoWithoutPhoto))
+  const blob = new Blob([JSON.stringify(plain)], { type: 'application/json' })
   form.append('data', blob, 'data.json')
   
   if (file) {

@@ -90,17 +90,35 @@
         </div>
       </div>
 
-      <!-- Sección: Plano de asientos -->
-      <div class="detail-section" v-if="seatLayoutPreview.length">
+      <!-- Sección: Plano de asientos (usar la misma vista que TemplateManager) -->
+      <div class="detail-section">
         <div class="section-header">
           <i class="pi pi-th-large"></i>
           <h3>Plano de asientos</h3>
         </div>
-        <SeatLayoutDesigner
-          :seat-count="seatLayoutPreview.length"
-          v-model="seatLayoutPreview"
-          :readonly="true"
-        />
+
+        <div v-if="templateSeatConfiguration">
+          <BusTemplatePreview
+            :seatConfiguration="templateSeatConfiguration"
+            :rows="calculateRows(templateSeatConfiguration)"
+          />
+          <div class="template-stats" style="margin-top:8px;">
+            <span><i class="pi pi-ticket"></i> {{ Object.values(templateSeatConfiguration).filter(v => ['NORMAL','VIP','SEMI_BED','BED'].includes(v)).length }} asientos</span>
+          </div>
+        </div>
+
+        <div v-else-if="seatLayoutPreview.length">
+          <SeatLayoutDesigner
+            :seat-count="seatLayoutPreview.length"
+            v-model="seatLayoutPreview"
+            :readonly="true"
+          />
+        </div>
+
+        <div v-else class="empty-state">
+          <i class="pi pi-ban"></i>
+          <p>Sin configuración</p>
+        </div>
       </div>
 
       <!-- Sección: Información de Mantenimiento Actual -->
@@ -206,8 +224,11 @@ import { ref, computed, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import SeatLayoutDesigner from './SeatLayoutDesigner.vue'
+import BusTemplatePreview from '@/components/ui/BusTemplatePreview.vue'
 import type { BusDto, MaintenanceRecordDto, SeatLayoutItem } from '../interfaces/bus.interface'
+import type { BusTemplateDto } from '../interfaces/template.interface'
 import { getMaintenanceRecords, getBusSeats } from '../services/busService'
+import * as templateService from '../services/templateService'
 
 const props = defineProps<{
   visible: boolean
@@ -223,11 +244,29 @@ const loadingHistory = ref(false)
 const maintenanceHistory = ref<MaintenanceRecordDto[]>([])
 const seatLayoutPreview = ref<SeatLayoutItem[]>([])
 
+// Template preview
+const loadingTemplate = ref(false)
+const selectedTemplate = ref<BusTemplateDto | null>(null)
+const templateSeatConfiguration = ref<Record<string, any> | null>(null)
+
+function calculateRows(seatConfiguration?: Record<string, any>): number {
+  if (!seatConfiguration) return 10
+  let maxRow = 10
+  for (const key in seatConfiguration) {
+    const cell = seatConfiguration[key]
+    if (cell?.row && cell.row > maxRow) {
+      maxRow = cell.row
+    }
+  }
+  return maxRow
+}
+
 watch(() => props.visible, (val) => {
   visibleLocal.value = val
   if (val && props.bus) {
     loadMaintenanceHistory()
     loadSeatLayout()
+    loadTemplateForBus()
   }
 })
 
@@ -235,6 +274,7 @@ watch(() => props.bus, (val) => {
   if (val && visibleLocal.value) {
     loadMaintenanceHistory()
     loadSeatLayout()
+    loadTemplateForBus()
   }
 })
 
@@ -324,6 +364,63 @@ async function loadSeatLayout() {
   } catch (error) {
     console.error('[BusDetail] Error loading seat layout:', error)
     seatLayoutPreview.value = []
+  }
+}
+
+async function loadTemplateForBus() {
+  // Reset
+  selectedTemplate.value = null
+  templateSeatConfiguration.value = null
+  if (!props.bus) return
+
+  console.log('[BusDetail] loadTemplateForBus - bus:', props.bus)
+
+  // If API already returns embedded template, use it
+  // @ts-ignore: if backend includes busTemplate
+  if ((props.bus as any).busTemplate) {
+    // @ts-ignore
+    selectedTemplate.value = (props.bus as any).busTemplate as BusTemplateDto
+    templateSeatConfiguration.value = selectedTemplate.value?.seatConfiguration || null
+    console.log('[BusDetail] Found embedded busTemplate in bus:', selectedTemplate.value?.id, 'seatConfiguration keys:', templateSeatConfiguration.value ? Object.keys(templateSeatConfiguration.value).slice(0,5) : 'null')
+    return
+  }
+
+  // If bus has busTemplateId, try to fetch available templates for the cooperative
+  const templateId = (props.bus as any).busTemplateId || null
+  if (!templateId) return
+
+  loadingTemplate.value = true
+  try {
+    // First try cooperative available templates
+    if (props.bus.cooperativeId) {
+      console.log('[BusDetail] Loading available templates for cooperative:', props.bus.cooperativeId)
+      const tmpl = await templateService.listAvailableForCooperative(props.bus.cooperativeId)
+      console.log('[BusDetail] available templates count:', tmpl?.length)
+      const found = tmpl.find(t => t.id === templateId)
+      if (found) {
+        selectedTemplate.value = found
+        templateSeatConfiguration.value = found.seatConfiguration || null
+        console.log('[BusDetail] Found template in cooperative list:', found.id, 'seatConfiguration keys:', templateSeatConfiguration.value ? Object.keys(templateSeatConfiguration.value).slice(0,5) : 'null')
+        return
+      }
+    }
+
+    // Fallback: list system templates
+    console.log('[BusDetail] Loading system templates as fallback')
+    const system = await templateService.listSystemTemplates()
+    console.log('[BusDetail] system templates count:', system?.length)
+    const foundSys = system.find(t => t.id === templateId)
+    if (foundSys) {
+      selectedTemplate.value = foundSys
+      templateSeatConfiguration.value = foundSys.seatConfiguration || null
+      console.log('[BusDetail] Found template in system list:', foundSys.id, 'seatConfiguration keys:', templateSeatConfiguration.value ? Object.keys(templateSeatConfiguration.value).slice(0,5) : 'null')
+      return
+    }
+    console.warn('[BusDetail] Template not found by id in cooperative/system lists:', templateId)
+  } catch (err) {
+    console.error('[BusDetail] Error loading template for bus:', err)
+  } finally {
+    loadingTemplate.value = false
   }
 }
 
