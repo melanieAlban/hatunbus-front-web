@@ -98,23 +98,42 @@
           </div>
         </div>
 
-        <!-- Fila 4: Número de Asientos y Estado -->
+        <!-- Fila 4: Template y Estado -->
         <div class="form-row">
           <div class="form-group">
-            <label class="p-label">Número de Asientos *</label>
-            <InputNumber 
-              v-model="modelLocal.seatCount" 
-              :class="{ 'p-invalid': errors.seatCount }" 
-              :min="10" 
-              :max="60"
-              :disabled="!isCreate"
-              placeholder="Ej: 40"
-              class="w-full"
-            />
-            <small v-if="errors.seatCount" class="p-error">{{ errors.seatCount }}</small>
-            <small class="field-hint" v-if="isCreate">Entre 10 y 60 asientos</small>
-            <small class="field-hint" v-else>No se puede modificar después de crear el bus</small>
-          </div>
+              <label class="p-label">Template *</label>
+              <div v-if="props.fixedTemplateId">
+                <div class="fixed-template-display" style="display:flex;flex-direction:column;gap:0.5rem">
+                  <div style="font-weight:600">{{ selectedTemplate?.name || 'Cargando template...' }}</div>
+                  <div style="display:flex;gap:1rem;align-items:center">
+                    <div style="min-width:160px;">
+                      <BusTemplatePreview
+                        :seatConfiguration="selectedTemplate?.seatConfiguration"
+                        :rows="calculateRows(selectedTemplate?.seatConfiguration)"
+                      />
+                    </div>
+                    <div style="font-size:0.95rem;color:var(--text-color-secondary)">
+                      <div><strong>{{ displaySeatCount(selectedTemplate) }}</strong> asientos</div>
+                      <div style="margin-top:0.5rem">{{ selectedTemplate?.description || '' }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div v-else>
+                <Dropdown
+                  v-model="modelLocal.busTemplateId"
+                  :options="availableTemplateOptions"
+                  optionLabel="name"
+                  optionValue="id"
+                  placeholder="Seleccionar template"
+                  :loading="loadingTemplates"
+                  :class="{ 'p-invalid': errors.busTemplateId }"
+                  class="w-full"
+                />
+              </div>
+              <small v-if="errors.busTemplateId" class="p-error">{{ errors.busTemplateId }}</small>
+              <small class="field-hint">El plano y número de asientos se obtienen del template</small>
+            </div>
 
           <div class="form-group">
             <label class="p-label">Estado *</label>
@@ -131,21 +150,21 @@
           </div>
         </div>
 
-        <div class="form-row seat-layout-row">
-          <div class="form-group seat-layout-wrapper">
-            <SeatLayoutDesigner
-              :seat-count="modelLocal.seatCount"
-              v-model="seatLayout"
-              :readonly="!isCreate"
-            />
-            <small v-if="errors.seatLayout" class="p-error">{{ errors.seatLayout }}</small>
-          </div>
-        </div>
-
-        <!-- Fila 5: Conductor -->
+        <!-- Preview + Conductor en la misma fila -->
         <div class="form-row">
+          <div class="form-group" v-if="!props.fixedTemplateId">
+            <label class="p-label">Previsualización</label>
+            <BusTemplatePreview
+              :seatConfiguration="selectedTemplate?.seatConfiguration"
+              :rows="calculateRows(selectedTemplate?.seatConfiguration)"
+            />
+            <div class="template-stats" style="margin-top:8px;">
+              <span><i class="pi pi-ticket"></i> {{ displaySeatCount(selectedTemplate) }} asientos</span>
+            </div>
+          </div>
+
           <div class="form-group">
-            <label class="p-label">Conductor *</label>
+            <label class="p-label">Conductor</label>
             <Dropdown
               v-model="modelLocal.driverId"
               :options="availableDriverOptions"
@@ -176,10 +195,6 @@
             </Dropdown>
             <small v-if="errors.driverId" class="p-error">{{ errors.driverId }}</small>
             <small class="field-hint">Cada conductor solo puede estar asignado a un bus.</small>
-          </div>
-
-          <div class="form-group">
-            <!-- espacio -->
           </div>
         </div>
 
@@ -329,8 +344,10 @@ import Dropdown from 'primevue/dropdown'
 import Button from 'primevue/button'
 import FileUpload from 'primevue/fileupload'
 import Tooltip from 'primevue/tooltip'
-import SeatLayoutDesigner from './SeatLayoutDesigner.vue'
+import BusTemplatePreview from '@/components/ui/BusTemplatePreview.vue'
+import * as templateService from '../services/templateService'
 import { BusStatus, SeatType, type BusDto, type CreateBusRequest, type UpdateBusPayload, type SeatLayoutItem, type SeatDto } from '../interfaces/bus.interface'
+import type { BusTemplateDto } from '../interfaces/template.interface'
 import { useCooperativeStore } from '../../cooperatives/store/useCooperativeStore'
 import { useAuthStore } from '../../auth/store/useAuthStore'
 import type { DriverDto } from '../../conductores/interfaces/driver.interface'
@@ -348,6 +365,7 @@ const props = defineProps<{
   visible?: boolean; 
   model?: BusDto | null;
   loading?: boolean;
+  fixedTemplateId?: string | null;
 }>()
 
 const emit = defineEmits<{
@@ -370,6 +388,21 @@ const availableDriverOptions = computed(() => {
   })
 })
 
+// React to changes on fixedTemplateId (in case the component is reused)
+watch(() => props.fixedTemplateId, async (newId) => {
+  if (!newId) return
+  try {
+    const found = availableTemplates.value.find(t => t.id === newId)
+    if (!found) {
+      const tpl = await templateService.getById(newId)
+      if (tpl) availableTemplates.value.unshift(tpl)
+    }
+    modelLocal.busTemplateId = newId
+  } catch (e) {
+    console.warn('[BusForm] Could not load fixed template on change', newId, e)
+  }
+})
+
 const statusOptions = ref([
   { label: 'Activo', value: BusStatus.ACTIVE },
   { label: 'Inactivo', value: BusStatus.INACTIVE },
@@ -386,6 +419,7 @@ const modelLocal = reactive<any>({
   bodyBrand: '',
   bodyNumber: null,
   seatCount: null,
+  busTemplateId: null,
   status: BusStatus.ACTIVE,
   cooperativeId: null,
   driverId: null,
@@ -396,34 +430,59 @@ const modelLocal = reactive<any>({
 })
 
 const seatLayout = ref<SeatLayoutItem[]>([])
-const seatLayoutDirty = ref(false)
-let suppressSeatLayoutWatch = false
-const allowSeatLayoutEdit = computed(() => isCreate.value)
-
 const errors = reactive<any>({})
 
-watch(seatLayout, () => {
-  if (suppressSeatLayoutWatch) {
-    suppressSeatLayoutWatch = false
-    return
+// Templates
+const availableTemplates = ref<BusTemplateDto[]>([])
+const loadingTemplates = ref(false)
+const availableTemplateOptions = computed(() => availableTemplates.value)
+const selectedTemplate = computed(() => {
+  return availableTemplates.value.find(t => t.id === modelLocal.busTemplateId) || null
+})
+
+function calculateRows(seatConfiguration?: Record<string, any>): number {
+  if (!seatConfiguration) return 10
+  let maxRow = 10
+  for (const key in seatConfiguration) {
+    const cell = seatConfiguration[key]
+    if (cell?.row && cell.row > maxRow) {
+      maxRow = cell.row
+    }
   }
-  if (allowSeatLayoutEdit.value) {
-    seatLayoutDirty.value = true
+  return maxRow
+}
+
+function displaySeatCount(template?: BusTemplateDto | null): number {
+  if (!template) return 0
+  if (template.seatCount != null && (template.cooperativeId === null || template.cooperativeId === undefined)) {
+    return template.seatCount
   }
-}, { deep: true })
+  if (template.seatConfiguration) {
+    return Object.values(template.seatConfiguration).filter(v => ['NORMAL','VIP','SEMI_BED','BED'].includes(v)).length
+  }
+  return template.seatCount || 0
+}
+
+async function loadTemplatesForCooperative(cooperativeId?: string | null) {
+  availableTemplates.value = []
+  if (!cooperativeId) return
+  loadingTemplates.value = true
+  try {
+    availableTemplates.value = await templateService.listAvailableForCooperative(cooperativeId)
+  } catch (err) {
+    console.error('[BusForm] Error loading templates:', err)
+  } finally {
+    loadingTemplates.value = false
+  }
+}
+
+// seat layout editing removed: templates determine seats
 
 const mapDriverToOption = (driver: DriverDto): DriverOption => ({
   id: driver.id,
   name: driver.userName || driver.licenseNumber || 'Conductor',
   license: driver.licenseNumber,
   assignedBusId: driver.assignedBusId || null
-})
-
-const mapSeatToLayout = (seat: SeatDto): SeatLayoutItem => ({
-  code: seat.displayCode || `S${seat.seatNumber}`,
-  row: seat.row || Math.ceil((seat.seatNumber || 1) / 4),
-  column: seat.column || (((seat.seatNumber || 1) - 1) % 4) + 1,
-  seatType: seat.seatType || SeatType.NORMAL
 })
 
 async function loadDriversByCooperative(cooperativeId?: string | null) {
@@ -458,29 +517,17 @@ function ensureCurrentDriverOption() {
   }
 }
 
-async function loadSeatLayout(busId: string) {
-  suppressSeatLayoutWatch = true
-  try {
-    const seats = await busService.getBusSeats(busId)
-    seatLayout.value = seats.map(mapSeatToLayout)
-    seatLayoutDirty.value = false
-    if (allowSeatLayoutEdit.value) {
-      modelLocal.seatCount = seatLayout.value.length
-    }
-  } catch (error) {
-    console.error('[BusForm] Error loading seat layout:', error)
-    seatLayout.value = []
-  } finally {
-    suppressSeatLayoutWatch = false
-  }
-}
+// seat layout loading removed: templates determine seats
 
 watch(() => modelLocal.cooperativeId, (newId) => {
   if (newId) {
     loadDriversByCooperative(newId)
+    loadTemplatesForCooperative(newId)
   } else {
     driverOptions.value = []
     modelLocal.driverId = null
+    availableTemplates.value = []
+    modelLocal.busTemplateId = null
   }
 })
 
@@ -539,7 +586,6 @@ watch(() => props.model, async (v) => {
     modelLocal.chassisNumber = v.chassisNumber || null
     modelLocal.bodyBrand = v.bodyBrand || ''
     modelLocal.bodyNumber = v.bodyNumber || null
-    modelLocal.seatCount = v.seatCount || null
     modelLocal.status = v.status || BusStatus.ACTIVE
     modelLocal.cooperativeId = v.cooperativeId || null
     modelLocal.driverId = v.driverId || null
@@ -547,14 +593,12 @@ watch(() => props.model, async (v) => {
     modelLocal.lastMaintenanceDate = v.lastMaintenanceDate ? new Date(v.lastMaintenanceDate) : null
     modelLocal.nextMaintenanceKm = v.nextMaintenanceKm || null
     modelLocal.photo = v.photo || null
+    // busTemplateId might come from v.busTemplateId
+    // @ts-ignore
+    modelLocal.busTemplateId = (v as any).busTemplateId || null
     ensureCurrentDriverOption()
-    if (v.id) {
-      await loadSeatLayout(v.id)
-    }
   } else {
     resetForm()
-    seatLayout.value = []
-    seatLayoutDirty.value = isCreate.value
   }
 }, { immediate: true })
 
@@ -576,7 +620,7 @@ function resetForm() {
   photoFile.value = null
   driverOptions.value = []
   seatLayout.value = []
-  seatLayoutDirty.value = isCreate.value
+  modelLocal.busTemplateId = null
 
   // Limpiar errores
   Object.keys(errors).forEach(key => {
@@ -612,7 +656,23 @@ onMounted(async () => {
       modelLocal.cooperativeId = authStore.user.cooperativeId
     }
 
-    await loadDriversByCooperative(modelLocal.cooperativeId || authStore.user?.cooperativeId || null)
+    const coopId = modelLocal.cooperativeId || authStore.user?.cooperativeId || null
+    await loadDriversByCooperative(coopId)
+    await loadTemplatesForCooperative(coopId)
+
+    // If the form has a fixed template (opened from a group), ensure it's loaded and selected
+    if (props.fixedTemplateId) {
+      try {
+        const found = availableTemplates.value.find(t => t.id === props.fixedTemplateId)
+        if (!found) {
+          const tpl = await templateService.getById(props.fixedTemplateId)
+          if (tpl) availableTemplates.value.unshift(tpl)
+        }
+        modelLocal.busTemplateId = props.fixedTemplateId
+      } catch (e) {
+        console.warn('[BusForm] Could not load fixed template', props.fixedTemplateId, e)
+      }
+    }
   } catch (e) {
     console.error('[BusForm] error loading cooperatives:', e)
   }
@@ -648,23 +708,10 @@ function validate(): boolean {
     isValid = false
   }
 
-  // Seat count validation
-  if (!modelLocal.seatCount) {
-    errors.seatCount = 'El número de asientos es obligatorio'
+  // Template selection required (templates provide seat layout)
+  if (!modelLocal.busTemplateId) {
+    errors.busTemplateId = 'Debes seleccionar un template para el bus'
     isValid = false
-  } else if (modelLocal.seatCount < 10 || modelLocal.seatCount > 60) {
-    errors.seatCount = 'El bus debe tener entre 10 y 60 asientos'
-    isValid = false
-  }
-
-  if (isCreate.value) {
-    if (!seatLayout.value.length) {
-      errors.seatLayout = 'Debes definir la distribuci�n de asientos'
-      isValid = false
-    } else if (modelLocal.seatCount && seatLayout.value.length !== modelLocal.seatCount) {
-      errors.seatLayout = `El plano debe tener exactamente ${modelLocal.seatCount} asientos`
-      isValid = false
-    }
   }
 
   // Status validation
@@ -679,10 +726,7 @@ function validate(): boolean {
     isValid = false
   }
 
-  if (!modelLocal.driverId) {
-    errors.driverId = 'Debes seleccionar un conductor'
-    isValid = false
-  }
+  // Driver optional when creating a bus
 
   return isValid
 }
@@ -690,16 +734,16 @@ function validate(): boolean {
 function toCreatePayload(): CreateBusRequest {
   const payload: CreateBusRequest = {
     cooperativeId: modelLocal.cooperativeId || authStore.user?.cooperativeId || '',
-    driverId: modelLocal.driverId || '',
     plate: modelLocal.plate.trim(),
     chassisBrand: modelLocal.chassisBrand.trim(),
     chassisNumber: modelLocal.chassisNumber?.trim() || null,
     bodyBrand: modelLocal.bodyBrand.trim(),
     bodyNumber: modelLocal.bodyNumber?.trim() || null,
-    seatCount: modelLocal.seatCount,
     unitNumber: modelLocal.unitNumber || null,
-    seatLayout: seatLayout.value
   }
+
+  if (modelLocal.driverId) payload.driverId = modelLocal.driverId
+  if (modelLocal.busTemplateId) payload.busTemplateId = modelLocal.busTemplateId
 
   // Solo incluir photo si NO hay archivo File (para backward compatibility)
   if (!photoFile.value && modelLocal.photo) {
@@ -744,9 +788,7 @@ function toUpdatePayload(): UpdateBusPayload {
     payload.photo = modelLocal.photo
   }
 
-  if (seatLayoutDirty.value && seatLayout.value.length) {
-    payload.seatLayout = seatLayout.value
-  }
+  // seatLayout editing removed: template determines seats
 
   return payload
 }
@@ -773,20 +815,6 @@ function onSubmit() {
   padding: 1rem 0;
 }
 
-.dialog-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--text-color);
-}
-
-.bus-form-content {
-  background: var(--card-bg);
-  border-radius: 12px;
-}
-
-.form-container {
-  padding: 1rem;
-}
 
 .form-row {
   display: grid;

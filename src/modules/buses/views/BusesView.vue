@@ -23,7 +23,7 @@
     <BusForm
       :visible="showCreate"
       @update:visible="val => (showCreate = val)"
-      @submit="(payload, file) => create(payload as CreateBusRequest, file)"
+      @submit="(payload, file, driverId) => create(payload as CreateBusRequest, file, driverId)"
       @cancel="() => (showCreate = false)"
     />
 
@@ -31,7 +31,7 @@
       :model="editing"
       :visible="!!editing"
       @update:visible="val => { if (!val) editing = null }"
-      @submit="(payload, file) => update(payload as UpdateBusPayload, file)"
+      @submit="(payload, file, driverId) => update(payload as UpdateBusPayload, file, driverId)"
       @cancel="() => (editing = null)"
     />
 
@@ -112,20 +112,31 @@ async function onCooperativeChange(id: string | null) {
   }
 }
 
-async function create(payload: CreateBusRequest, file?: File) {
+async function create(payload: CreateBusRequest, file?: File, driverId?: string | null) {
   try {
-    console.log('[BusesView] create received payload:', payload, 'file:', !!file)
+    console.log('[BusesView] create received payload:', payload, 'file:', !!file, 'driverId:', driverId)
+    let created: BusDto | null = null
     if (file) {
       // backend expects multipart/form-data for create with file
       if (typeof store.createMultipart === 'function') {
-        await store.createMultipart(payload, file)
+        created = await store.createMultipart(payload, file)
       } else {
         // fallback: call service directly
-        await service.createBus(payload, file)
+        created = await service.createBus(payload, file)
       }
     } else {
-      await store.create(payload)
+      created = await store.create(payload)
     }
+
+    // If a driver was selected in the form, assign it using the dedicated endpoint
+    if (created && driverId) {
+      try {
+        await service.assignDriver(created.id, driverId)
+      } catch (errAssign) {
+        console.warn('[BusesView] could not assign driver after create', errAssign)
+      }
+    }
+
     showCreate.value = false
     success('Bus creado', `Placa: ${payload.plate}`)
   } catch (e) {
@@ -143,18 +154,29 @@ function onEdit(item: BusDto) {
   editing.value = item
 }
 
-async function update(payload: UpdateBusPayload, file?: File) {
+async function update(payload: UpdateBusPayload, file?: File, driverId?: string | null) {
   if (!editing.value?.id) return
   try {
+    let updated: BusDto | null = null
     if (file) {
       if (typeof store.updateMultipart === 'function') {
-        await store.updateMultipart(editing.value.id, payload, file)
+        updated = await store.updateMultipart(editing.value.id, payload, file)
       } else {
-        await service.updateBus(editing.value.id, payload, file)
+        updated = await service.updateBus(editing.value.id, payload, file)
       }
     } else {
-      await store.update(editing.value.id, payload)
+      updated = await store.update(editing.value.id, payload)
     }
+
+    // If a driver was selected, assign it
+    if (updated && driverId) {
+      try {
+        await service.assignDriver(updated.id, driverId)
+      } catch (errAssign) {
+        console.warn('[BusesView] could not assign driver after update', errAssign)
+      }
+    }
+
     editing.value = null
     success('Bus actualizado', payload.plate || '')
   } catch (e) {

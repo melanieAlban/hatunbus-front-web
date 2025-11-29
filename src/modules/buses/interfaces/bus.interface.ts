@@ -16,6 +16,7 @@ export interface BusDto {
   driverId: string
   driverName?: string | null
   driverLicenseNumber?: string | null
+  busTemplateId?: string | null
   plate: string
   chassisBrand: string
   chassisNumber?: string | null
@@ -35,16 +36,15 @@ export interface BusDto {
 
 export interface CreateBusRequest {
   cooperativeId: string
-  driverId: string
+  driverId?: string
+  busTemplateId?: string
   plate: string
   chassisBrand: string
   chassisNumber?: string | null
   bodyBrand: string
   bodyNumber?: string | null
-  seatCount: number
   unitNumber?: number | null
   photo?: string | null // Base64 para enviar al backend
-  seatLayout: SeatLayoutItem[]
 }
 
 export interface UpdateBusPayload {

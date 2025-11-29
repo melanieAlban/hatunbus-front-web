@@ -24,3 +24,8 @@ export async function createTemplate(request: CreateBusTemplateRequest): Promise
 export async function deactivateTemplate(id: string): Promise<void> {
   await apiClient.patch(`/bus-templates/${id}/deactivate`)
 }
+
+export async function getById(id: string): Promise<BusTemplateDto> {
+  const response = await apiClient.get<BusTemplateDto>(`/bus-templates/${id}`)
+  return response.data
+}
