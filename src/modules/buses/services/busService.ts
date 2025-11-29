@@ -68,14 +68,37 @@ export async function createFromGroup(groupId: string, payload: Partial<CreateBu
     unitNumber: payload.unitNumber || null
   }
 
+  // Include driverId and cooperativeId explicitly (backend may accept null)
+  dto.driverId = (payload as any).driverId ?? null
+  dto.cooperativeId = (payload as any).cooperativeId ?? null
+
+  // Debug: log payload sent to backend to ease troubleshooting
+  try {
+    // eslint-disable-next-line no-console
+    console.debug('[busService] createFromGroup dto:', JSON.parse(JSON.stringify(dto)))
+  } catch (e) {
+    /* ignore logging errors */
+  }
+
   const plain = JSON.parse(JSON.stringify(dto))
-  const blob = new Blob([JSON.stringify(plain)], { type: 'application/json' })
-  form.append('data', blob, 'data.json')
+  const jsonString = JSON.stringify(plain)
+  // Append as raw string to avoid being interpreted as a file part
+  form.append('data', jsonString)
+
+  // eslint-disable-next-line no-console
+  console.debug('[busService] createFromGroup jsonString:', jsonString)
 
   if (file) form.append('photo', file)
 
-  const res = await apiClient.post(`${BASE}/group/${groupId}`, form)
-  return res.data as BusDto
+  try {
+    const res = await apiClient.post(`${BASE}/group/${groupId}`, form)
+    return res.data as BusDto
+  } catch (err: any) {
+    // Attach server response (if any) to the error log for easier debugging in UI
+    // eslint-disable-next-line no-console
+    console.error('[busService] createFromGroup error:', err?.response?.data || err)
+    throw err
+  }
 }
 
 export async function updateBus(id: string, payload: UpdateBusPayload, file?: File): Promise<BusDto> {
