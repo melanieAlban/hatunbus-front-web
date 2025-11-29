@@ -843,7 +843,6 @@ function getPaymentIcon(method?: string): string {
   const icons: Record<string, string> = {
     'CASH': 'pi pi-money-bill',
     'TRANSFER': 'pi pi-building-columns',
-    'PAYPAL': 'pi pi-paypal',
     'CARD': 'pi pi-credit-card'
   }
   return method ? icons[method] || 'pi pi-question' : 'pi pi-question'
@@ -853,7 +852,6 @@ function getPaymentLabel(method?: string): string {
   const labels: Record<string, string> = {
     'CASH': 'Efectivo',
     'TRANSFER': 'Transferencia',
-    'PAYPAL': 'PayPal',
     'CARD': 'Tarjeta'
   }
   return method ? labels[method] || 'N/A' : 'N/A'

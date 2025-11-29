@@ -267,13 +267,29 @@
                   <div v-if="getCellInfo(index)?.seatType && getCellInfo(index)?.seatType !== 'NORMAL'" class="seat-type-badge">
                     {{ getSeatTypeLabel(getCellInfo(index)?.seatType) }}
                   </div>
-                  <div v-if="getCellInfo(index)?.additionalPrice && getCellInfo(index)?.additionalPrice > 0" class="seat-price-badge">
-                    +${{ getCellInfo(index)?.additionalPrice.toFixed(2) }}
+                  <div
+                    v-if="(getCellInfo(index)?.additionalPrice ?? 0) > 0"
+                    class="seat-price-badge"
+                  >
+                    +${{ (getCellInfo(index)?.additionalPrice ?? 0).toFixed(2) }}
                   </div>
                 </template>
-                <i v-else-if="getCellInfo(index)?.type === 'bathroom'" class="pi pi-home" title="Baño"></i>
-                <i v-else-if="getCellInfo(index)?.type === 'door'" class="pi pi-sign-in" title="Puerta"></i>
-                <i v-else-if="getCellInfo(index)?.type === 'stairs'" class="pi pi-sort-alt" title="Escaleras"></i>
+                <template
+                  v-else-if="
+                    getCellInfo(index)?.type &&
+                    getCellInfo(index)?.type !== 'empty' &&
+                    getCellInfo(index)?.type !== 'aisle'
+                  "
+                >
+                  <div class="special-content">
+                    <i
+                      v-if="getSpecialIcon(getCellInfo(index)?.type)"
+                      :class="getSpecialIcon(getCellInfo(index)?.type)"
+                      :title="getSpecialLabel(getCellInfo(index)?.type)"
+                    ></i>
+                    <small class="special-label">{{ getSpecialLabel(getCellInfo(index)?.type) }}</small>
+                  </div>
+                </template>
               </div>
             </div>
 
@@ -399,16 +415,30 @@
             <div class="price-summary">
               <div class="price-row">
                 <span><i class="pi pi-ticket"></i> Subtotal ({{ selectedSeats.length }} boletos)</span>
-                <span class="price">${{ calculateSubtotal().toFixed(2) }}</span>
+                <span class="price">${{ lastSaleTotals.subtotal.toFixed(2) }}</span>
               </div>
-              <div class="price-row" v-if="calculateDiscount() > 0">
+              <div class="price-row" v-if="lastSaleTotals.discount > 0">
                 <span><i class="pi pi-percentage"></i> Descuentos</span>
-                <span class="price discount">-${{ calculateDiscount().toFixed(2) }}</span>
+                <span class="price discount">-${{ lastSaleTotals.discount.toFixed(2) }}</span>
+              </div>
+              <div v-if="discountDetails.length" class="discount-breakdown">
+                <div
+                  class="discount-detail"
+                  v-for="detail in discountDetails"
+                  :key="`${detail.seatCode}-${detail.passengerType}`"
+                >
+                  <Tag :value="detail.label" severity="warning" />
+                  <span class="discount-seat">
+                    Asiento {{ detail.seatCode }}
+                    <span v-if="detail.passengerName">- {{ detail.passengerName }}</span>
+                  </span>
+                  <span class="discount-amount">-${{ detail.amount.toFixed(2) }}</span>
+                </div>
               </div>
               <Divider />
               <div class="price-row total">
                 <span><i class="pi pi-dollar"></i> Total a pagar</span>
-                <span class="price">${{ calculateTotal().toFixed(2) }}</span>
+                <span class="price">${{ lastSaleTotals.total.toFixed(2) }}</span>
               </div>
             </div>
           </div>
@@ -460,6 +490,7 @@ import * as cityService from '../services/cityService'
 import * as ticketService from '../services/ticketService'
 import type { CityDto } from '../services/cityService'
 import PurchaseSuccessDialog from '../components/PurchaseSuccessDialog.vue'
+import busService from '../../buses/services/busService'
 
 // Directiva tooltip
 const vTooltip = {
@@ -492,6 +523,12 @@ const selectedRoute = ref<RouteDto | null>(null)
 const paymentMethod = ref<string>('CASH')
 const loading = ref(false)
 const completedPurchase = ref<PurchaseDto | null>(null)
+const busTemplateConfig = ref<Record<string, string> | null>(null)
+const lastSaleTotals = ref({
+  subtotal: 0,
+  discount: 0,
+  total: 0
+})
 
 // Variables para búsqueda de viajes
 const cities = ref<CityDto[]>([])
@@ -594,7 +631,16 @@ const seatRowBlocks = computed(() => {
 // ==========================================
 
 // Auto-detect number of columns based on seat data
+const hasTemplateLayout = computed(() =>
+  busTemplateConfig.value != null && Object.keys(busTemplateConfig.value).length > 0
+)
+
 const GRID_COLUMNS = computed(() => {
+  if (hasTemplateLayout.value) {
+    // En templates el grid es fijo de 5 columnas (2 asientos | pasillo | 2 asientos)
+    return 5
+  }
+
   if (!seatAvailability.value.length) return 5
 
   const maxCol = seatAvailability.value.reduce(
@@ -603,23 +649,33 @@ const GRID_COLUMNS = computed(() => {
   )
 
   // Legacy layout: 2 columns (V and P) -> use 5 column grid (2 seats | aisle | 2 seats)
-  // Modern layout: 4+ columns -> use that number
   if (maxCol === 2) {
-    return 5 // Legacy: 2 left + aisle + 2 right
+    return 5
   }
 
   return Math.max(maxCol, 4)
 })
 
 const GRID_ROWS = computed(() => {
-  // Calculate rows needed based on seat availability data
-  if (!seatAvailability.value.length) return 10 // Default
+  if (hasTemplateLayout.value) {
+    const config = busTemplateConfig.value || {}
+    const maxIndex = Object.keys(config)
+      .map(k => Number(k))
+      .filter(n => !Number.isNaN(n))
+      .reduce((max, n) => Math.max(max, n), 0)
+    // index = (row-1)*5+(col-1)
+    const maxRowFromTemplate = Math.floor(maxIndex / 5) + 1
+    return Math.max(maxRowFromTemplate, 1)
+  }
+
+  // Fallback: rows from availability
+  if (!seatAvailability.value.length) return 10
 
   const maxRow = seatAvailability.value.reduce(
     (max, seat) => Math.max(max, seat.row ?? 0),
     0
   )
-  return Math.max(maxRow, 10) // At least 10 rows
+  return Math.max(maxRow, 10)
 })
 
 const totalGridCells = computed(() => GRID_ROWS.value * GRID_COLUMNS.value)
@@ -630,9 +686,66 @@ const dynamicGridStyle = computed(() => ({
 }))
 
 // Map seat availability to grid positions
-const seatGridMap = computed(() => {
-  const map = new Map<number, SeatAvailability>()
+const availabilityByPos = computed(() => {
+  const map = new Map<string, SeatAvailability>()
+  seatAvailability.value.forEach(seat => {
+    if (seat.row && seat.column) {
+      map.set(`${seat.row}-${seat.column}`, seat)
+    }
+  })
+  return map
+})
 
+type SpecialCell = 'bathroom' | 'door' | 'stairs' | 'storage' | 'wheelchair'
+
+interface CellInfo {
+  type: 'seat' | SpecialCell | 'aisle' | 'empty'
+  seatCode?: string
+  seatType?: string
+  additionalPrice?: number
+  status?: 'available' | 'occupied'
+}
+
+const seatGridMap = computed(() => {
+  const map = new Map<number, CellInfo>()
+  const seatTypes = ['NORMAL', 'VIP', 'SEMI_BED', 'BED']
+  const specialTypes: SpecialCell[] = ['bathroom', 'door', 'stairs', 'storage', 'wheelchair']
+
+  // Template-aware layout (5-column grid with especiales)
+  if (hasTemplateLayout.value) {
+    const config = busTemplateConfig.value || {}
+    Object.entries(config).forEach(([idxStr, typeValue]) => {
+      const idx = Number(idxStr)
+      if (Number.isNaN(idx)) return
+      const row = Math.floor(idx / 5) + 1
+      const column = (idx % 5) + 1
+      const gridIndex = (row - 1) * GRID_COLUMNS.value + column
+
+      const availability = availabilityByPos.value.get(`${row}-${column}`)
+      const normalizedSeatType = typeof typeValue === 'string' ? typeValue.toUpperCase() : ''
+      const normalizedSpecial = typeof typeValue === 'string' ? typeValue.toLowerCase() : ''
+
+      if (seatTypes.includes(normalizedSeatType)) {
+        map.set(gridIndex, {
+          type: 'seat',
+          seatCode: availability?.seatCode || `S${String(idx + 1).padStart(2, '0')}`,
+          seatType: normalizedSeatType,
+          additionalPrice: availability?.additionalPrice || 0,
+          status: availability?.status || 'available'
+        })
+      } else if (normalizedSpecial === 'aisle') {
+        map.set(gridIndex, { type: 'aisle' })
+      } else if (specialTypes.includes(normalizedSpecial as SpecialCell)) {
+        map.set(gridIndex, { type: normalizedSpecial as SpecialCell })
+      } else {
+        // cualquier otro valor = celda vacía
+        map.set(gridIndex, { type: 'empty' })
+      }
+    })
+    return map
+  }
+
+  // Fallback legacy: solo asientos disponibles con filas/columnas
   if (!seatAvailability.value.length) return map
 
   const maxCol = seatAvailability.value.reduce(
@@ -640,69 +753,53 @@ const seatGridMap = computed(() => {
     0
   )
 
-  // Seats are positioned by row and column
   seatAvailability.value.forEach(seat => {
     if (seat.row && seat.column) {
       let gridIndex: number
 
       if (maxCol === 2) {
-        // LEGACY LAYOUT: 2 columns (V=1, P=2) -> map to 5-column grid
-        // Column 1 (V) -> Grid column 1
-        // Column 2 (P) -> Grid column 2
-        // Aisle is column 3
-        // Right side would be columns 4-5 (but legacy only has left side)
         gridIndex = (seat.row - 1) * 5 + seat.column
       } else {
-        // MODERN LAYOUT: Use actual row/column
         gridIndex = (seat.row - 1) * GRID_COLUMNS.value + seat.column
       }
 
-      map.set(gridIndex, seat)
+      map.set(gridIndex, {
+        type: 'seat',
+        seatCode: seat.seatCode,
+        seatType: seat.seatType,
+        additionalPrice: seat.additionalPrice || 0,
+        status: seat.status
+      })
     }
   })
 
   return map
 })
 
-interface CellInfo {
-  type: 'seat' | 'bathroom' | 'door' | 'stairs' | 'aisle' | 'empty'
-  seatCode?: string
-  seatType?: string
-  additionalPrice?: number
-  status?: 'available' | 'occupied'
-}
+function getCellInfo(index: number): CellInfo {
+  const cell = seatGridMap.value.get(index)
+  if (cell) return cell
 
-function getCellInfo(index: number): CellInfo | null {
-  const seat = seatGridMap.value.get(index)
+  if (!hasTemplateLayout.value) {
+    const column = ((index - 1) % GRID_COLUMNS.value) + 1
 
-  if (seat) {
-    return {
-      type: 'seat',
-      seatCode: seat.seatCode,
-      seatType: seat.seatType,
-      additionalPrice: seat.additionalPrice || 0,
-      status: seat.status
+    // Aisle default for column 3 en legacy
+    if (column === 3) {
+      return { type: 'aisle' }
     }
-  }
-
-  // Check if it's the aisle column (column 3 in a 5-column grid)
-  const column = ((index - 1) % GRID_COLUMNS.value) + 1
-  if (column === 3) {
-    return { type: 'aisle' }
   }
 
   return { type: 'empty' }
 }
 
 function getDynamicCellClass(index: number): string {
-  const column = ((index - 1) % GRID_COLUMNS.value) + 1
   const cellInfo = getCellInfo(index)
   const classes = ['grid-cell']
 
   if (!cellInfo) return classes.join(' ')
 
   // Aisle styling
-  if (cellInfo.type === 'aisle' || column === 3) {
+  if (cellInfo.type === 'aisle') {
     classes.push('aisle-cell')
     return classes.join(' ')
   }
@@ -731,8 +828,13 @@ function getDynamicCellClass(index: number): string {
     return classes.join(' ')
   }
 
+  if (cellInfo.type === 'empty') {
+    classes.push('empty')
+    return classes.join(' ')
+  }
+
   // Special elements
-  if (cellInfo.type === 'bathroom' || cellInfo.type === 'door' || cellInfo.type === 'stairs') {
+  if (['bathroom', 'door', 'stairs', 'storage', 'wheelchair'].includes(cellInfo.type)) {
     classes.push('special-element', cellInfo.type)
   }
 
@@ -756,6 +858,32 @@ function getSeatTypeLabel(seatType?: string): string {
   return labels[seatType || 'NORMAL'] || ''
 }
 
+const specialLabels: Record<string, string> = {
+  bathroom: 'Baño',
+  door: 'Puerta',
+  stairs: 'Escaleras',
+  aisle: 'Pasillo',
+  storage: 'Maletero',
+  wheelchair: 'Acceso'
+}
+
+function getSpecialLabel(type?: string): string {
+  if (!type) return ''
+  return specialLabels[type] || ''
+}
+
+function getSpecialIcon(type?: string): string {
+  if (!type) return ''
+  const icons: Record<string, string> = {
+    bathroom: 'pi pi-home',
+    door: 'pi pi-sign-in',
+    stairs: 'pi pi-sort-alt',
+    storage: 'pi pi-briefcase',
+    wheelchair: 'pi pi-users'
+  }
+  return icons[type] || ''
+}
+
 // ==========================================
 
 const passengerTypes = [
@@ -768,7 +896,6 @@ const passengerTypes = [
 const paymentMethods = [
   { label: 'Efectivo', value: 'CASH', icon: 'pi pi-money-bill' },
   { label: 'Transferencia', value: 'TRANSFER', icon: 'pi pi-building-columns' },
-  { label: 'PayPal', value: 'PAYPAL', icon: 'pi pi-paypal' }
 ]
 
 const BASE_PRICE = 15.00
@@ -1032,15 +1159,31 @@ async function onCooperativeChange() {
   await loadTripsForCooperative(selectedCooperative.value)
 }
 
-  async function onTripChange() {
-    selectedSeats.value = []
-    passengers.value = []
-    seatAvailability.value = []
-
-    if (!selectedTrip.value) return
-
-    loading.value = true
+async function loadBusTemplateForTrip() {
+  busTemplateConfig.value = selectedTrip.value?.busTemplate?.seatConfiguration || null
+  if (
+    (!busTemplateConfig.value || Object.keys(busTemplateConfig.value).length === 0) &&
+    selectedTrip.value?.busId
+  ) {
     try {
+      const bus = await busService.getBusById(selectedTrip.value.busId)
+      busTemplateConfig.value = bus.busTemplate?.seatConfiguration || null
+    } catch (err) {
+      console.warn('No se pudo cargar el template del bus', err)
+    }
+  }
+}
+
+async function onTripChange() {
+  selectedSeats.value = []
+  passengers.value = []
+  seatAvailability.value = []
+
+  if (!selectedTrip.value) return
+
+  loading.value = true
+  try {
+      await loadBusTemplateForTrip()
       const availability = await ticketService.getSeatAvailability(selectedTrip.value.id)
       console.log('=== SEAT AVAILABILITY DEBUG ===')
       console.log('Trip ID:', selectedTrip.value.id)
@@ -1147,9 +1290,59 @@ function calculateDiscount(): number {
   return discount
 }
 
+interface DiscountDetail {
+  seatCode: string
+  passengerName: string
+  passengerType: PassengerType
+  label: string
+  amount: number
+}
+
+const discountRules: Record<PassengerType, { label: string; rate: number }> = {
+  'ADULT': { label: 'Adulto', rate: 0 },
+  'CHILD': { label: 'Niño (50%)', rate: 0.5 },
+  'SENIOR': { label: 'Adulto mayor (30%)', rate: 0.3 },
+  'DISABLED': { label: 'Discapacitado (50%)', rate: 0.5 }
+}
+
+const discountDetails = computed<DiscountDetail[]>(() => {
+  const details: DiscountDetail[] = []
+  selectedSeats.value.forEach((seatCode, index) => {
+    const passenger = passengers.value[index]
+    if (!seatCode || !passenger) return
+    const rule = discountRules[passenger.passengerType]
+    if (!rule || rule.rate <= 0) return
+    const seatPrice = getSeatPrice(seatCode)
+    const amount = seatPrice * rule.rate
+    if (amount <= 0) return
+    details.push({
+      seatCode,
+      passengerName: passenger.passengerName,
+      passengerType: passenger.passengerType,
+      label: rule.label,
+      amount
+    })
+  })
+  return details
+})
+
 function calculateTotal(): number {
   return calculateSubtotal() - calculateDiscount()
 }
+
+function updateLastSaleTotals() {
+  lastSaleTotals.value = {
+    subtotal: Number(calculateSubtotal().toFixed(2)),
+    discount: Number(calculateDiscount().toFixed(2)),
+    total: Number(calculateTotal().toFixed(2))
+  }
+}
+
+watch(
+  [selectedSeats, passengers, seatAvailability],
+  () => updateLastSaleTotals(),
+  { deep: true, immediate: true }
+)
 
 function validateForm(): boolean {
   if (!selectedTrip.value) {
@@ -1203,43 +1396,52 @@ async function submitPurchase() {
     
     if (!originCityName || !destinationCityName) {
       notifyError('No se pudieron determinar las ciudades de origen y destino')
-      return
+        return
     }
     
     // Encontrar los IDs de las ciudades de origen y destino
-    let originId: string | undefined
-    let destinationId: string | undefined
+    let originCityId: string | undefined
+    let destinationCityId: string | undefined
     
-    // Primero intentar encontrar stops si existen
+    // Primero intentar obtener el nombre de ciudad desde los stops, luego mapearlo al catálogo de ciudades
     if (routeStops.value.length > 0) {
-      const originStop = routeStops.value.find(stop => 
+      const originStop = routeStops.value.find(stop =>
         stop.city === originCityName || (stop.name && stop.name.includes(originCityName))
       )
-      const destinationStop = routeStops.value.find(stop => 
+      const destinationStop = routeStops.value.find(stop =>
         stop.city === destinationCityName || (stop.name && stop.name.includes(destinationCityName))
       )
-      
-      originId = originStop?.id
-      destinationId = destinationStop?.id
-      
-      console.log('Stops encontrados:', { originId, destinationId })
+
+      if (originStop?.city) {
+        originCityId = cities.value.find(city => city.name === originStop.city)?.id
+      }
+      if (destinationStop?.city) {
+        destinationCityId = cities.value.find(city => city.name === destinationStop.city)?.id
+      }
+
+      console.log('Stops encontrados:', { originCityId, destinationCityId })
     }
     
-    // Si no hay stops, usar los IDs de las ciudades (el backend creará stops temporales)
-    if (!originId || !destinationId) {
-      console.log('No se encontraron stops, buscando city IDs...')
+    // Si no hay stops o no se encontró ciudad, buscar directamente por nombre
+    if (!originCityId || !destinationCityId) {
+      console.log('No se encontraron stops válidos, buscando city IDs...')
+      console.log('Buscando ciudades con nombres:', { originCityName, destinationCityName })
+      console.log('Total ciudades disponibles:', cities.value.length)
+      console.log('Primeras 5 ciudades:', cities.value.slice(0, 5).map(c => ({ id: c.id, name: c.name })))
+
       const originCity = cities.value.find(city => city.name === originCityName)
       const destinationCity = cities.value.find(city => city.name === destinationCityName)
-      
-      originId = originCity?.id
-      destinationId = destinationCity?.id
-      
-      console.log('City IDs encontrados:', { originId, destinationId })
-      console.log('originCity:', originCity)
-      console.log('destinationCity:', destinationCity)
-      
-      if (!originId || !destinationId) {
-        notifyError('No se pudieron encontrar las ciudades de origen o destino')
+
+      console.log('Ciudad origen encontrada:', originCity)
+      console.log('Ciudad destino encontrada:', destinationCity)
+
+      originCityId = originCity?.id
+      destinationCityId = destinationCity?.id
+
+      console.log('City IDs encontrados:', { originCityId, destinationCityId })
+
+      if (!originCityId || !destinationCityId) {
+        notifyError('No se pudieron encontrar las ciudades de origen o destino en el catálogo')
         return
       }
     }
@@ -1259,8 +1461,8 @@ async function submitPurchase() {
         passengerName: passenger.passengerName.trim(),
         passengerIdCard: passenger.passengerIdCard.trim(),
         passengerType: passenger.passengerType,
-        originStopId: originId,
-        destinationStopId: destinationId
+        originCityId: originCityId!,
+        destinationCityId: destinationCityId!
       }
       
       // Email es opcional pero si se proporciona debe ser válido
@@ -1932,6 +2134,20 @@ function handleNewSale() {
   cursor: default;
 }
 
+.grid-cell.special-element .special-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.grid-cell.special-element .special-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 .grid-cell.bathroom {
   background-color: #0ea5e9;
   color: white;
@@ -1951,6 +2167,20 @@ function handleNewSale() {
   color: white;
   border: 2px solid #d97706;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.grid-cell.storage {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+  border: 2px solid #93c5fd;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.grid-cell.wheelchair {
+  background-color: #e0f2f1;
+  color: #0f766e;
+  border: 2px solid #14b8a6;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .grid-cell.special-element i {
@@ -2130,6 +2360,39 @@ function handleNewSale() {
 .price.discount {
   color: #e53935;
   font-weight: 700;
+}
+
+.discount-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.5rem 0 1rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  border: 1px dashed rgba(229, 57, 53, 0.3);
+}
+
+.discount-detail {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #92400e;
+}
+
+.discount-detail .p-tag {
+  font-size: 0.75rem;
+}
+
+.discount-seat {
+  flex: 1;
+  color: var(--text-color);
+}
+
+.discount-amount {
+  font-weight: 700;
+  color: #b45309;
 }
 
 .action-buttons {
