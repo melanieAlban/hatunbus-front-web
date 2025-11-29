@@ -368,7 +368,7 @@ function selectRole(role: any) {
 
 .custom-input {
   width: 100%;
-  background: var(--beige-bone);
+  background: white;
   border: 1px solid var(--gray-medium);
   color: var(--app-text);
   border-radius: 6px;
@@ -396,7 +396,7 @@ function selectRole(role: any) {
 
 .select-trigger {
   width: 100%;
-  background: var(--beige-bone);
+  background: white;
   border: 1px solid var(--gray-medium);
   color: var(--app-text);
   border-radius: 6px;

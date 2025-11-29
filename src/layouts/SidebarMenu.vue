@@ -3,8 +3,46 @@
     <!-- Opciones de menú -->
     <div class="menu-section">
       <ul class="menu-list">
-        <li v-for="item in visibleMenu" :key="item.path" class="menu-item">
-          <router-link :to="item.path" class="menu-link" exact-active-class="menu-link--active">
+        <li v-for="item in visibleMenu" :key="item.path || item.label" class="menu-item">
+          <!-- Item con hijos (submenú) -->
+          <template v-if="item.children && item.children.length > 0">
+            <div 
+              class="menu-link menu-link--parent" 
+              @click="toggleSubmenu(item.label)"
+              :class="{ 'menu-link--expanded': expandedMenus.has(item.label) }"
+            >
+              <i v-if="item.icon" :class="item.icon + ' menu-icon'" aria-hidden="true"></i>
+              <span class="menu-label">{{ item.label }}</span>
+              <i 
+                class="pi pi-chevron-down submenu-arrow" 
+                :class="{ 'submenu-arrow--expanded': expandedMenus.has(item.label) }"
+              ></i>
+            </div>
+            <ul v-show="expandedMenus.has(item.label)" class="submenu-list">
+              <li v-for="child in item.children" :key="child.path" class="submenu-item">
+                <router-link 
+                  :to="child.path!" 
+                  class="menu-link menu-link--child"
+                  :class="{ 'menu-link--active': isChildActive(child.path!) }"
+                  custom
+                  v-slot="{ navigate }"
+                >
+                  <div @click="navigate" style="display: flex; align-items: center; gap: 0.75rem; width: 100%;">
+                    <i v-if="child.icon" :class="child.icon + ' menu-icon'" aria-hidden="true"></i>
+                    <span class="menu-label">{{ child.label }}</span>
+                  </div>
+                </router-link>
+              </li>
+            </ul>
+          </template>
+
+          <!-- Item normal sin hijos -->
+          <router-link 
+            v-else
+            :to="item.path!" 
+            class="menu-link" 
+            exact-active-class="menu-link--active"
+          >
             <i v-if="item.icon" :class="item.icon + ' menu-icon'" aria-hidden="true"></i>
             <span class="menu-label">{{ item.label }}</span>
             <Badge 
@@ -42,7 +80,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { adminMenu } from '../modules/admin/menu.config'
 import { useAuthStore } from '../modules/auth/store/useAuthStore'
 import Button from 'primevue/button'
@@ -50,7 +89,29 @@ import Badge from 'primevue/badge'
 import { usePendingPaymentsNotification } from '../composables/usePendingPaymentsNotification'
 
 const auth = useAuthStore()
+const route = useRoute()
 const role = computed(() => (auth.user as any)?.role)
+
+// Control de submenús expandidos
+const expandedMenus = ref<Set<string>>(new Set())
+
+function toggleSubmenu(label: string) {
+  if (expandedMenus.value.has(label)) {
+    expandedMenus.value.delete(label)
+  } else {
+    expandedMenus.value.add(label)
+  }
+}
+
+// Función para determinar si un hijo está activo
+function isChildActive(path: string): boolean {
+  const url = new URL(path, window.location.origin)
+  const pathMatch = route.path === url.pathname
+  const tabParam = url.searchParams.get('tab')
+  const currentTab = route.query.tab
+  
+  return pathMatch && tabParam === currentTab
+}
 
 // Notificaciones de pagos pendientes
 const { pendingCount, requestNotificationPermission, startPolling, stopPolling } = usePendingPaymentsNotification()
@@ -166,6 +227,71 @@ function onLogout() {
 
 .menu-link--active .menu-icon {
   color: var(--white-bone);
+}
+
+/* Menú padre con submenú */
+.menu-link--parent {
+  cursor: pointer;
+  position: relative;
+  border-left: 4px solid transparent;
+}
+
+.menu-link--parent:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* Flecha del submenú */
+.submenu-arrow {
+  margin-left: auto;
+  font-size: 0.85rem;
+  transition: transform 0.2s ease;
+}
+
+.submenu-arrow--expanded {
+  transform: rotate(180deg);
+}
+
+/* Lista de submenú */
+.submenu-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+}
+
+.submenu-item {
+  display: block;
+}
+
+/* Items hijos del submenú */
+.menu-link--child {
+  padding-left: 3.5rem;
+  font-size: 0.9rem;
+  border-left: 4px solid transparent;
+  background: transparent;
+  color: var(--app-text);
+}
+
+.menu-link--child:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+  color: var(--app-text) !important;
+  border-left-color: var(--sidebar-accent, var(--app-accent));
+}
+
+.menu-link--child.menu-link--active {
+  background: var(--sidebar-accent, var(--app-accent)) !important;
+  color: var(--white-bone) !important;
+  border-left-color: var(--sidebar-accent, var(--app-accent));
+  font-weight: 500;
+}
+
+.menu-link--child.menu-link--active .menu-icon {
+  color: var(--white-bone) !important;
+}
+
+.menu-link--child .menu-icon {
+  font-size: 1rem;
+  color: var(--sidebar-accent, var(--app-accent));
 }
 
 .menu-icon {

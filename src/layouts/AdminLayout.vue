@@ -145,7 +145,7 @@ const currentLogo = computed(() => {
 
 // Estilos dinámicos para header
 const headerStyles = computed(() => ({
-  background: `linear-gradient(90deg, ${customization.colors.value.primary}, ${customization.colors.value.secondary})`,
+  background: customization.colors.value.primary,
   color: 'white',
 }))
 

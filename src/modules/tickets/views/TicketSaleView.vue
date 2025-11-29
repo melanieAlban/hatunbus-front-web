@@ -250,71 +250,33 @@
               <i class="pi pi-user"></i>
               <span>Conductor</span>
             </div>
-            
-            <!-- Aisle indicator -->
-            <div class="bus-info">
-              <small><i class="pi pi-arrow-down"></i> Pasillo central <i class="pi pi-arrow-down"></i></small>
-            </div>
-            
+
           <div class="seat-bus-shell">
             <div class="bus-label front">Frente</div>
-            <div class="seat-grid">
+
+            <!-- Dynamic Bus Layout Grid based on Template -->
+            <div class="dynamic-seat-grid" :style="dynamicGridStyle">
               <div
-                v-for="(row, rowIndex) in seatRowBlocks"
-                :key="`seat-row-${rowIndex}`"
-                class="seat-row"
+                v-for="index in totalGridCells"
+                :key="`cell-${index}`"
+                :class="getDynamicCellClass(index)"
+                @click="onCellClick(index)"
               >
-                <div class="seat-side">
-                  <div
-                    v-for="(cell, columnIndex) in row.left"
-                    :key="`seat-left-${rowIndex}-${columnIndex}`"
-                    class="seat-slot"
-                  >
-                    <button
-                      v-if="cell"
-                      type="button"
-                      class="seat-item"
-                      :class="{
-                        'selected': selectedSeats.includes(cell.seatCode),
-                        'occupied': cell.status !== 'available',
-                        'disabled': cell.status !== 'available' || (selectedSeats.length >= passengerCount && !selectedSeats.includes(cell.seatCode))
-                      }"
-                      @click="toggleSeat(cell.seatCode)"
-                    >
-                      <span class="seat-number">{{ cell.seatCode }}</span>
-                    </button>
-                    <div v-else class="seat-placeholder"></div>
+                <template v-if="getCellInfo(index)?.type === 'seat'">
+                  <span class="seat-number">{{ getCellInfo(index)?.seatCode }}</span>
+                  <div v-if="getCellInfo(index)?.seatType && getCellInfo(index)?.seatType !== 'NORMAL'" class="seat-type-badge">
+                    {{ getSeatTypeLabel(getCellInfo(index)?.seatType) }}
                   </div>
-                </div>
-
-                <div class="bus-aisle">
-                  <span v-if="rowIndex === 0">Pasillo</span>
-                </div>
-
-                <div class="seat-side">
-                  <div
-                    v-for="(cell, columnIndex) in row.right"
-                    :key="`seat-right-${rowIndex}-${columnIndex}`"
-                    class="seat-slot"
-                  >
-                    <button
-                      v-if="cell"
-                      type="button"
-                      class="seat-item"
-                      :class="{
-                        'selected': selectedSeats.includes(cell.seatCode),
-                        'occupied': cell.status !== 'available',
-                        'disabled': cell.status !== 'available' || (selectedSeats.length >= passengerCount && !selectedSeats.includes(cell.seatCode))
-                      }"
-                      @click="toggleSeat(cell.seatCode)"
-                    >
-                      <span class="seat-number">{{ cell.seatCode }}</span>
-                    </button>
-                    <div v-else class="seat-placeholder"></div>
+                  <div v-if="getCellInfo(index)?.additionalPrice && getCellInfo(index)?.additionalPrice > 0" class="seat-price-badge">
+                    +${{ getCellInfo(index)?.additionalPrice.toFixed(2) }}
                   </div>
-                </div>
+                </template>
+                <i v-else-if="getCellInfo(index)?.type === 'bathroom'" class="pi pi-home" title="Baño"></i>
+                <i v-else-if="getCellInfo(index)?.type === 'door'" class="pi pi-sign-in" title="Puerta"></i>
+                <i v-else-if="getCellInfo(index)?.type === 'stairs'" class="pi pi-sort-alt" title="Escaleras"></i>
               </div>
             </div>
+
             <div class="bus-label back">Salida</div>
           </div>
           </div>
@@ -627,6 +589,175 @@ const seatRowBlocks = computed(() => {
   }))
 })
 
+// ==========================================
+// DYNAMIC SEAT LAYOUT (Template-based)
+// ==========================================
+
+// Auto-detect number of columns based on seat data
+const GRID_COLUMNS = computed(() => {
+  if (!seatAvailability.value.length) return 5
+
+  const maxCol = seatAvailability.value.reduce(
+    (max, seat) => Math.max(max, seat.column ?? 0),
+    0
+  )
+
+  // Legacy layout: 2 columns (V and P) -> use 5 column grid (2 seats | aisle | 2 seats)
+  // Modern layout: 4+ columns -> use that number
+  if (maxCol === 2) {
+    return 5 // Legacy: 2 left + aisle + 2 right
+  }
+
+  return Math.max(maxCol, 4)
+})
+
+const GRID_ROWS = computed(() => {
+  // Calculate rows needed based on seat availability data
+  if (!seatAvailability.value.length) return 10 // Default
+
+  const maxRow = seatAvailability.value.reduce(
+    (max, seat) => Math.max(max, seat.row ?? 0),
+    0
+  )
+  return Math.max(maxRow, 10) // At least 10 rows
+})
+
+const totalGridCells = computed(() => GRID_ROWS.value * GRID_COLUMNS.value)
+
+const dynamicGridStyle = computed(() => ({
+  gridTemplateColumns: `repeat(${GRID_COLUMNS.value}, 1fr)`,
+  gridTemplateRows: `repeat(${GRID_ROWS.value}, 1fr)`,
+}))
+
+// Map seat availability to grid positions
+const seatGridMap = computed(() => {
+  const map = new Map<number, SeatAvailability>()
+
+  if (!seatAvailability.value.length) return map
+
+  const maxCol = seatAvailability.value.reduce(
+    (max, seat) => Math.max(max, seat.column ?? 0),
+    0
+  )
+
+  // Seats are positioned by row and column
+  seatAvailability.value.forEach(seat => {
+    if (seat.row && seat.column) {
+      let gridIndex: number
+
+      if (maxCol === 2) {
+        // LEGACY LAYOUT: 2 columns (V=1, P=2) -> map to 5-column grid
+        // Column 1 (V) -> Grid column 1
+        // Column 2 (P) -> Grid column 2
+        // Aisle is column 3
+        // Right side would be columns 4-5 (but legacy only has left side)
+        gridIndex = (seat.row - 1) * 5 + seat.column
+      } else {
+        // MODERN LAYOUT: Use actual row/column
+        gridIndex = (seat.row - 1) * GRID_COLUMNS.value + seat.column
+      }
+
+      map.set(gridIndex, seat)
+    }
+  })
+
+  return map
+})
+
+interface CellInfo {
+  type: 'seat' | 'bathroom' | 'door' | 'stairs' | 'aisle' | 'empty'
+  seatCode?: string
+  seatType?: string
+  additionalPrice?: number
+  status?: 'available' | 'occupied'
+}
+
+function getCellInfo(index: number): CellInfo | null {
+  const seat = seatGridMap.value.get(index)
+
+  if (seat) {
+    return {
+      type: 'seat',
+      seatCode: seat.seatCode,
+      seatType: seat.seatType,
+      additionalPrice: seat.additionalPrice || 0,
+      status: seat.status
+    }
+  }
+
+  // Check if it's the aisle column (column 3 in a 5-column grid)
+  const column = ((index - 1) % GRID_COLUMNS.value) + 1
+  if (column === 3) {
+    return { type: 'aisle' }
+  }
+
+  return { type: 'empty' }
+}
+
+function getDynamicCellClass(index: number): string {
+  const column = ((index - 1) % GRID_COLUMNS.value) + 1
+  const cellInfo = getCellInfo(index)
+  const classes = ['grid-cell']
+
+  if (!cellInfo) return classes.join(' ')
+
+  // Aisle styling
+  if (cellInfo.type === 'aisle' || column === 3) {
+    classes.push('aisle-cell')
+    return classes.join(' ')
+  }
+
+  // Seat styling
+  if (cellInfo.type === 'seat' && cellInfo.seatCode) {
+    classes.push('seat-cell')
+
+    // Seat type classes
+    if (cellInfo.seatType) {
+      classes.push(`seat-type-${cellInfo.seatType.toLowerCase()}`)
+    }
+
+    // Status classes
+    if (selectedSeats.value.includes(cellInfo.seatCode)) {
+      classes.push('selected')
+    } else if (cellInfo.status === 'occupied') {
+      classes.push('occupied')
+    } else if (cellInfo.status === 'available') {
+      classes.push('available')
+      if (selectedSeats.value.length >= passengerCount.value) {
+        classes.push('disabled')
+      }
+    }
+
+    return classes.join(' ')
+  }
+
+  // Special elements
+  if (cellInfo.type === 'bathroom' || cellInfo.type === 'door' || cellInfo.type === 'stairs') {
+    classes.push('special-element', cellInfo.type)
+  }
+
+  return classes.join(' ')
+}
+
+function onCellClick(index: number) {
+  const cellInfo = getCellInfo(index)
+  if (cellInfo?.type === 'seat' && cellInfo.seatCode) {
+    toggleSeat(cellInfo.seatCode)
+  }
+}
+
+function getSeatTypeLabel(seatType?: string): string {
+  const labels: Record<string, string> = {
+    'NORMAL': 'Normal',
+    'VIP': 'VIP',
+    'SEMI_BED': 'Semi-cama',
+    'BED': 'Cama'
+  }
+  return labels[seatType || 'NORMAL'] || ''
+}
+
+// ==========================================
+
 const passengerTypes = [
   { label: '👤 Adulto', value: 'ADULT' },
   { label: '👶 Menor', value: 'CHILD' },
@@ -905,12 +1036,24 @@ async function onCooperativeChange() {
     selectedSeats.value = []
     passengers.value = []
     seatAvailability.value = []
-    
+
     if (!selectedTrip.value) return
-    
+
     loading.value = true
     try {
       const availability = await ticketService.getSeatAvailability(selectedTrip.value.id)
+      console.log('=== SEAT AVAILABILITY DEBUG ===')
+      console.log('Trip ID:', selectedTrip.value.id)
+      console.log('Total seats:', availability.length)
+      console.log('First 3 seats:', availability.slice(0, 3))
+      console.log('Sample seat structure:', availability[0])
+      console.log('Has row/column?', availability[0]?.row, availability[0]?.column)
+      console.log('Has seatType?', availability[0]?.seatType)
+      console.log('Has additionalPrice?', availability[0]?.additionalPrice)
+      console.log('Full first seat:', JSON.stringify(availability[0], null, 2))
+      console.log('Max row:', Math.max(...availability.map(s => s.row || 0)))
+      console.log('Max column:', Math.max(...availability.map(s => s.column || 0)))
+      console.log('===============================')
       seatAvailability.value = availability
     } catch (err: any) {
       console.warn('No se pudieron cargar los asientos del viaje:', err.response?.data?.message || err.message)
@@ -974,16 +1117,32 @@ function formatDateTime(datetime: string): string {
   })
 }
 
+function getSeatPrice(seatCode: string): number {
+  // Find seat in availability to get additional price
+  const seat = seatAvailability.value.find(s => s.seatCode === seatCode)
+  const additionalPrice = seat?.additionalPrice || 0
+  return routeBasePrice.value + additionalPrice
+}
+
 function calculateSubtotal(): number {
-  return selectedSeats.value.length * routeBasePrice.value
+  let subtotal = 0
+  selectedSeats.value.forEach(seatCode => {
+    subtotal += getSeatPrice(seatCode)
+  })
+  return subtotal
 }
 
 function calculateDiscount(): number {
   let discount = 0
-  passengers.value.forEach(p => {
-    if (p.passengerType === 'CHILD') discount += routeBasePrice.value * 0.5 // 50% niños
-    else if (p.passengerType === 'SENIOR') discount += routeBasePrice.value * 0.3 // 30% tercera edad
-    else if (p.passengerType === 'DISABLED') discount += routeBasePrice.value * 0.5 // 50% discapacitados
+  passengers.value.forEach((p, index) => {
+    const seatCode = selectedSeats.value[index]
+    if (!seatCode) return
+
+    const seatPrice = getSeatPrice(seatCode)
+
+    if (p.passengerType === 'CHILD') discount += seatPrice * 0.5 // 50% niños
+    else if (p.passengerType === 'SENIOR') discount += seatPrice * 0.3 // 30% tercera edad
+    else if (p.passengerType === 'DISABLED') discount += seatPrice * 0.5 // 50% discapacitados
   })
   return discount
 }
@@ -1327,9 +1486,10 @@ function handleNewSale() {
   align-items: center;
   gap: 1rem;
   padding: 1.5rem;
-  background: linear-gradient(135deg, #f8f7f5 0%, #E8DFD5 100%);
+  background: white;
   border-radius: 12px;
   margin-bottom: 1rem;
+  border: 1px solid var(--gray-medium);
 }
 
 .selector-label {
@@ -1351,21 +1511,21 @@ function handleNewSale() {
   width: 3rem;
   height: 3rem;
   border-color: #C9A882 !important;
-  color: #A0826D !important;
+  color: var(--app-accent) !important;
   transition: all 0.3s ease;
 }
 
 .count-controls button:not(:disabled):hover {
-  background-color: #A0826D !important;
+  background-color: var(--app-accent) !important;
   color: white !important;
-  border-color: #A0826D !important;
+  border-color: var(--app-accent) !important;
   transform: scale(1.1);
 }
 
 .count-display {
   font-size: 2rem;
   font-weight: 700;
-  color: #A0826D;
+  color: var(--app-accent);
   min-width: 3rem;
   text-align: center;
   padding: 0.5rem 1rem;
@@ -1450,10 +1610,10 @@ function handleNewSale() {
 
 .bus-layout {
   padding: 2rem;
-  background: linear-gradient(135deg, #F5F1EB 0%, #E8DFD5 100%);
+  background: white;
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border: 2px solid #C9A882;
+  border: 2px solid var(--gray-medium);
 }
 
 .driver-area {
@@ -1471,7 +1631,7 @@ function handleNewSale() {
   font-weight: 600;
   color: #5A4A3A;
   box-shadow: 0 4px 12px rgba(107, 91, 71, 0.15);
-  border: 2px solid #A0826D;
+  border: 2px solid var(--app-accent);
 }
 
 .driver-area i {
@@ -1487,7 +1647,7 @@ function handleNewSale() {
 }
 
 .bus-info i {
-  color: #8B7355;
+  color: var(--app-accent);
 }
 
 .seat-bus-shell {
@@ -1560,7 +1720,7 @@ function handleNewSale() {
 
 .seat-item:hover:not(.disabled):not(.occupied) {
   background: #e7d9c8;
-  border-color: #c9a882;
+  border-color: var(--app-accent);
 }
 
 .seat-item.selected {
@@ -1600,7 +1760,7 @@ function handleNewSale() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #8B7355;
+  color: var(--app-accent);
   text-transform: uppercase;
   letter-spacing: 1px;
   font-size: 0.65rem;
@@ -1622,6 +1782,182 @@ function handleNewSale() {
 .bus-aisle span {
   margin-top: 0.25rem;
 }
+
+/* ==========================================
+   DYNAMIC SEAT GRID STYLES (Template-based)
+   ========================================== */
+
+.dynamic-seat-grid {
+  display: grid;
+  gap: 8px;
+  padding: 2rem 1rem;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.grid-cell {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  position: relative;
+  min-height: 40px;
+}
+
+/* Aisle styling */
+.grid-cell.aisle-cell {
+  background: repeating-linear-gradient(
+    45deg,
+    #e9ecef,
+    #e9ecef 4px,
+    #f8f9fa 4px,
+    #f8f9fa 8px
+  );
+  border: none;
+  cursor: default;
+}
+
+/* Empty cells */
+.grid-cell.empty {
+  background: transparent;
+  border: none;
+}
+
+/* Seat cells */
+.grid-cell.seat-cell {
+  border: 2px solid #d4c7b4;
+  background: #f8f2ea;
+  color: #735c45;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(90, 74, 58, 0.2);
+}
+
+.grid-cell.seat-cell:hover:not(.disabled):not(.occupied) {
+  background: #e7d9c8;
+  border-color: var(--app-accent);
+  transform: scale(1.05);
+}
+
+/* Seat type colors */
+.grid-cell.seat-type-normal {
+  background: #f8f2ea;
+  border-color: #d4c7b4;
+}
+
+.grid-cell.seat-type-vip {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border-color: #6366f1;
+  color: white;
+}
+
+.grid-cell.seat-type-semi_bed {
+  background: linear-gradient(135deg, #14b8a6 0%, #06b6d4 100%);
+  border-color: #14b8a6;
+  color: white;
+}
+
+.grid-cell.seat-type-bed {
+  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+  border-color: #f59e0b;
+  color: white;
+}
+
+/* Seat status */
+.grid-cell.seat-cell.available {
+  opacity: 1;
+}
+
+.grid-cell.seat-cell.selected {
+  background: linear-gradient(135deg, #2196F3, #1976D2) !important;
+  color: white !important;
+  border-color: #1976D2 !important;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.5);
+  transform: scale(1.1);
+}
+
+.grid-cell.seat-cell.occupied {
+  background: #ded7cd !important;
+  color: #a0948a !important;
+  border-color: #c4bbb0 !important;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.grid-cell.seat-cell.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Seat number display */
+.grid-cell .seat-number {
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+/* Seat type badge */
+.seat-type-badge {
+  font-size: 0.5rem;
+  padding: 1px 4px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+/* Seat price badge */
+.seat-price-badge {
+  font-size: 0.55rem;
+  padding: 1px 3px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #2e7d32;
+  border-radius: 3px;
+  margin-top: 1px;
+  font-weight: 700;
+}
+
+.grid-cell.seat-type-vip .seat-price-badge,
+.grid-cell.seat-type-semi_bed .seat-price-badge,
+.grid-cell.seat-type-bed .seat-price-badge {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+/* Special elements */
+.grid-cell.special-element {
+  cursor: default;
+}
+
+.grid-cell.bathroom {
+  background-color: #0ea5e9;
+  color: white;
+  border: 2px solid #0284c7;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.grid-cell.door {
+  background-color: #10b981;
+  color: white;
+  border: 2px solid #059669;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.grid-cell.stairs {
+  background-color: #f59e0b;
+  color: white;
+  border: 2px solid #d97706;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.grid-cell.special-element i {
+  font-size: 1.2rem;
+}
+
+/* ========================================== */
 
 .passenger-form {
   padding: 1.5rem;
@@ -1708,13 +2044,13 @@ function handleNewSale() {
   left: 0;
   right: 0;
   height: 4px;
-  background: #8B7355;
+  background: var(--app-accent);
   transform: scaleX(0);
   transition: transform 0.3s ease;
 }
 
 .payment-option:hover {
-  border-color: #A0826D;
+  border-color: var(--app-accent);
   transform: translateY(-4px);
   box-shadow: 0 8px 20px rgba(139, 115, 85, 0.2);
 }
@@ -1724,15 +2060,15 @@ function handleNewSale() {
 }
 
 .payment-option.selected {
-  background: linear-gradient(135deg, #E8DFD5 0%, #e3bf97 0%);
-  border-color: #A0826D;
+  background: white;
+  border-color: var(--app-accent);
   color: #5A4A3A;
-  box-shadow: 0 8px 24px rgba(201, 168, 130, 0.3);
+  box-shadow: 0 8px 24px rgba(139, 115, 85, 0.15);
 }
 
 .payment-option.selected::before {
   transform: scaleX(1);
-  background: #A0826D;
+  background: var(--app-accent);
 }
 
 .payment-option i {
@@ -1859,13 +2195,13 @@ function handleNewSale() {
   height: 3rem;
   background-color: #f8f7f5 !important;
   border-color: #C9A882 !important;
-  color: #A0826D !important;
+  color: var(--app-accent) !important;
   transition: all 0.3s ease;
 }
 
 .swap-button:not(:disabled):hover {
   background-color: #E8DFD5 !important;
-  border-color: #A0826D !important;
+  border-color: var(--app-accent) !important;
   color: #76614D !important;
   transform: rotate(180deg);
 }
@@ -1911,15 +2247,17 @@ function handleNewSale() {
   align-items: center;
   gap: 0.75rem;
   padding: 1rem;
-  background: linear-gradient(135deg, #E8DFD5 0%, #C9A882 100%);
+  background: white;
   border-radius: 8px;
   color: #5A4A3A;
   font-size: 1.05rem;
-  border: 2px solid #A0826D;
+  border: 2px solid var(--app-accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .info-banner i {
   font-size: 1.5rem;
+  color: var(--app-accent);
 }
 
 .results-card {
@@ -1941,14 +2279,14 @@ function handleNewSale() {
 }
 
 .trip-card:hover {
-  border-color: #A0826D;
+  border-color: var(--app-accent);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(139, 115, 85, 0.15);
 }
 
 .trip-card.selected {
-  border-color: #8B7355;
-  background: linear-gradient(135deg, #FAF8F4 0%, #E8DFD5 100%);
+  border-color: var(--app-accent);
+  background: white;
   box-shadow: 0 4px 16px rgba(139, 115, 85, 0.25);
 }
 
@@ -1976,7 +2314,7 @@ function handleNewSale() {
 }
 
 .trip-route i {
-  color: #8B7355;
+  color: var(--app-accent);
 }
 
 .trip-info {
@@ -1994,7 +2332,7 @@ function handleNewSale() {
 }
 
 .info-item i {
-  color: #A0826D;
+  color: var(--app-accent);
 }
 
 .no-results-card {

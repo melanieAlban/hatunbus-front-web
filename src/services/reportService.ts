@@ -47,15 +47,67 @@ export interface TripSummaryDto {
   scheduledDate?: string
   scheduledDepartureTime?: string
   scheduledArrivalTime?: string
+  actualDepartureTime?: string
+  actualArrivalTime?: string
   busPlate?: string
   busUnitNumber?: number
   status?: string
   cooperativeName?: string
+  cooperativeLogo?: string
+  driverName?: string
+  cooperativePrimaryColor?: string
+  cooperativeSecondaryColor?: string
 }
 
 export async function fetchTripsByDateRange(startDate: string, endDate: string): Promise<TripSummaryDto[]> {
   const { data } = await apiClient.get('/viajes/rango', {
     params: { fechaInicio: startDate, fechaFin: endDate },
   })
+  return data
+}
+
+export async function fetchCompletedTrips(): Promise<TripSummaryDto[]> {
+  const { data } = await apiClient.get('/viajes/completados')
+  return data
+}
+
+export interface RouteFrequencyDto {
+  routeName: string
+  tripCount: number
+}
+
+export interface DriverReportDto {
+  driverId: string
+  driverName: string
+  cedula: string
+  licenseNumber: string
+  totalTrips: number
+  totalPassengers: number
+  totalIncome: number
+  totalExpenses: number
+  netBalance: number
+  averagePassengersPerTrip: number
+  mostFrequentRoutes: RouteFrequencyDto[]
+  cooperativeName: string
+}
+
+export interface DriversReportResponseDto {
+  drivers: DriverReportDto[]
+  totalDrivers: number
+  totalTrips: number
+  totalPassengers: number
+}
+
+export async function fetchDriversReport(
+  startDate?: string,
+  endDate?: string,
+  driverId?: string
+): Promise<DriversReportResponseDto> {
+  const params: any = {}
+  if (startDate) params.fechaInicio = startDate
+  if (endDate) params.fechaFin = endDate
+  if (driverId) params.conductorId = driverId
+  
+  const { data } = await apiClient.get('/reportes/conductores', { params })
   return data
 }
