@@ -594,7 +594,17 @@ const seatRowBlocks = computed(() => {
 // ==========================================
 
 // Auto-detect number of columns based on seat data
+const hasTemplateLayout = computed(() =>
+  selectedTrip.value?.busTemplate?.seatConfiguration &&
+  Object.keys(selectedTrip.value.busTemplate.seatConfiguration).length > 0
+)
+
 const GRID_COLUMNS = computed(() => {
+  if (hasTemplateLayout.value) {
+    // En templates el grid es fijo de 5 columnas (2 asientos | pasillo | 2 asientos)
+    return 5
+  }
+
   if (!seatAvailability.value.length) return 5
 
   const maxCol = seatAvailability.value.reduce(
@@ -603,23 +613,33 @@ const GRID_COLUMNS = computed(() => {
   )
 
   // Legacy layout: 2 columns (V and P) -> use 5 column grid (2 seats | aisle | 2 seats)
-  // Modern layout: 4+ columns -> use that number
   if (maxCol === 2) {
-    return 5 // Legacy: 2 left + aisle + 2 right
+    return 5
   }
 
   return Math.max(maxCol, 4)
 })
 
 const GRID_ROWS = computed(() => {
-  // Calculate rows needed based on seat availability data
-  if (!seatAvailability.value.length) return 10 // Default
+  if (hasTemplateLayout.value) {
+    const config = selectedTrip.value?.busTemplate?.seatConfiguration || {}
+    const maxIndex = Object.keys(config)
+      .map(k => Number(k))
+      .filter(n => !Number.isNaN(n))
+      .reduce((max, n) => Math.max(max, n), 0)
+    // index = (row-1)*5+(col-1)
+    const maxRowFromTemplate = Math.floor(maxIndex / 5) + 1
+    return Math.max(maxRowFromTemplate, 1)
+  }
+
+  // Fallback: rows from availability
+  if (!seatAvailability.value.length) return 10
 
   const maxRow = seatAvailability.value.reduce(
     (max, seat) => Math.max(max, seat.row ?? 0),
     0
   )
-  return Math.max(maxRow, 10) // At least 10 rows
+  return Math.max(maxRow, 10)
 })
 
 const totalGridCells = computed(() => GRID_ROWS.value * GRID_COLUMNS.value)
@@ -630,37 +650,13 @@ const dynamicGridStyle = computed(() => ({
 }))
 
 // Map seat availability to grid positions
-const seatGridMap = computed(() => {
-  const map = new Map<number, SeatAvailability>()
-
-  if (!seatAvailability.value.length) return map
-
-  const maxCol = seatAvailability.value.reduce(
-    (max, seat) => Math.max(max, seat.column ?? 0),
-    0
-  )
-
-  // Seats are positioned by row and column
+const availabilityByPos = computed(() => {
+  const map = new Map<string, SeatAvailability>()
   seatAvailability.value.forEach(seat => {
     if (seat.row && seat.column) {
-      let gridIndex: number
-
-      if (maxCol === 2) {
-        // LEGACY LAYOUT: 2 columns (V=1, P=2) -> map to 5-column grid
-        // Column 1 (V) -> Grid column 1
-        // Column 2 (P) -> Grid column 2
-        // Aisle is column 3
-        // Right side would be columns 4-5 (but legacy only has left side)
-        gridIndex = (seat.row - 1) * 5 + seat.column
-      } else {
-        // MODERN LAYOUT: Use actual row/column
-        gridIndex = (seat.row - 1) * GRID_COLUMNS.value + seat.column
-      }
-
-      map.set(gridIndex, seat)
+      map.set(`${seat.row}-${seat.column}`, seat)
     }
   })
-
   return map
 })
 
@@ -672,22 +668,79 @@ interface CellInfo {
   status?: 'available' | 'occupied'
 }
 
-function getCellInfo(index: number): CellInfo | null {
-  const seat = seatGridMap.value.get(index)
+const seatGridMap = computed(() => {
+  const map = new Map<number, CellInfo>()
 
-  if (seat) {
-    return {
-      type: 'seat',
-      seatCode: seat.seatCode,
-      seatType: seat.seatType,
-      additionalPrice: seat.additionalPrice || 0,
-      status: seat.status
-    }
+  // Template-aware layout (5-column grid with especiales)
+  if (hasTemplateLayout.value) {
+    const config = selectedTrip.value?.busTemplate?.seatConfiguration || {}
+    Object.entries(config).forEach(([idxStr, typeValue]) => {
+      const idx = Number(idxStr)
+      if (Number.isNaN(idx)) return
+      const row = Math.floor(idx / 5) + 1
+      const column = (idx % 5) + 1
+      const gridIndex = (row - 1) * GRID_COLUMNS.value + column
+
+      const availability = availabilityByPos.value.get(`${row}-${column}`)
+      const seatTypes = ['NORMAL', 'VIP', 'SEMI_BED', 'BED']
+
+      if (seatTypes.includes(typeValue)) {
+        map.set(gridIndex, {
+          type: 'seat',
+          seatCode: availability?.seatCode || `${gridIndex}`,
+          seatType: typeValue,
+          additionalPrice: availability?.additionalPrice || 0,
+          status: availability?.status || 'available'
+        })
+      } else if (typeValue === 'aisle' || typeValue === 'door' || typeValue === 'stairs' || typeValue === 'bathroom') {
+        map.set(gridIndex, { type: typeValue as CellInfo['type'] })
+      } else {
+        // cualquier otro valor = celda vacía
+        map.set(gridIndex, { type: 'empty' })
+      }
+    })
+    return map
   }
 
-  // Check if it's the aisle column (column 3 in a 5-column grid)
+  // Fallback legacy: solo asientos disponibles con filas/columnas
+  if (!seatAvailability.value.length) return map
+
+  const maxCol = seatAvailability.value.reduce(
+    (max, seat) => Math.max(max, seat.column ?? 0),
+    0
+  )
+
+  seatAvailability.value.forEach(seat => {
+    if (seat.row && seat.column) {
+      let gridIndex: number
+
+      if (maxCol === 2) {
+        gridIndex = (seat.row - 1) * 5 + seat.column
+      } else {
+        gridIndex = (seat.row - 1) * GRID_COLUMNS.value + seat.column
+      }
+
+      map.set(gridIndex, {
+        type: 'seat',
+        seatCode: seat.seatCode,
+        seatType: seat.seatType,
+        additionalPrice: seat.additionalPrice || 0,
+        status: seat.status
+      })
+    }
+  })
+
+  return map
+})
+
+function getCellInfo(index: number): CellInfo | null {
+  const cell = seatGridMap.value.get(index)
+  if (cell) return cell
+
   const column = ((index - 1) % GRID_COLUMNS.value) + 1
-  if (column === 3) {
+
+  // Aisle default for column 3. Para templates, solo aplica si la celda no está configurada.
+  if (column === 3 && (!hasTemplateLayout.value || !cell)) {
     return { type: 'aisle' }
   }
 
@@ -695,14 +748,13 @@ function getCellInfo(index: number): CellInfo | null {
 }
 
 function getDynamicCellClass(index: number): string {
-  const column = ((index - 1) % GRID_COLUMNS.value) + 1
   const cellInfo = getCellInfo(index)
   const classes = ['grid-cell']
 
   if (!cellInfo) return classes.join(' ')
 
   // Aisle styling
-  if (cellInfo.type === 'aisle' || column === 3) {
+  if (cellInfo.type === 'aisle') {
     classes.push('aisle-cell')
     return classes.join(' ')
   }
@@ -1203,42 +1255,44 @@ async function submitPurchase() {
     
     if (!originCityName || !destinationCityName) {
       notifyError('No se pudieron determinar las ciudades de origen y destino')
-      return
+        return
     }
     
     // Encontrar los IDs de las ciudades de origen y destino
-    let originId: string | undefined
-    let destinationId: string | undefined
+    let originCityId: string | undefined
+    let destinationCityId: string | undefined
     
-    // Primero intentar encontrar stops si existen
+    // Primero intentar obtener el nombre de ciudad desde los stops, luego mapearlo al catálogo de ciudades
     if (routeStops.value.length > 0) {
-      const originStop = routeStops.value.find(stop => 
+      const originStop = routeStops.value.find(stop =>
         stop.city === originCityName || (stop.name && stop.name.includes(originCityName))
       )
-      const destinationStop = routeStops.value.find(stop => 
+      const destinationStop = routeStops.value.find(stop =>
         stop.city === destinationCityName || (stop.name && stop.name.includes(destinationCityName))
       )
-      
-      originId = originStop?.id
-      destinationId = destinationStop?.id
-      
-      console.log('Stops encontrados:', { originId, destinationId })
+
+      if (originStop?.city) {
+        originCityId = cities.value.find(city => city.name === originStop.city)?.id
+      }
+      if (destinationStop?.city) {
+        destinationCityId = cities.value.find(city => city.name === destinationStop.city)?.id
+      }
+
+      console.log('Stops encontrados:', { originCityId, destinationCityId })
     }
     
-    // Si no hay stops, usar los IDs de las ciudades (el backend creará stops temporales)
-    if (!originId || !destinationId) {
-      console.log('No se encontraron stops, buscando city IDs...')
+    // Si no hay stops o no se encontró ciudad, buscar directamente por nombre
+    if (!originCityId || !destinationCityId) {
+      console.log('No se encontraron stops válidos, buscando city IDs...')
       const originCity = cities.value.find(city => city.name === originCityName)
       const destinationCity = cities.value.find(city => city.name === destinationCityName)
       
-      originId = originCity?.id
-      destinationId = destinationCity?.id
+      originCityId = originCity?.id
+      destinationCityId = destinationCity?.id
       
-      console.log('City IDs encontrados:', { originId, destinationId })
-      console.log('originCity:', originCity)
-      console.log('destinationCity:', destinationCity)
+      console.log('City IDs encontrados:', { originCityId, destinationCityId })
       
-      if (!originId || !destinationId) {
+      if (!originCityId || !destinationCityId) {
         notifyError('No se pudieron encontrar las ciudades de origen o destino')
         return
       }
@@ -1259,8 +1313,8 @@ async function submitPurchase() {
         passengerName: passenger.passengerName.trim(),
         passengerIdCard: passenger.passengerIdCard.trim(),
         passengerType: passenger.passengerType,
-        originStopId: originId,
-        destinationStopId: destinationId
+        originCityId: originCityId!,
+        destinationCityId: destinationCityId!
       }
       
       // Email es opcional pero si se proporciona debe ser válido
