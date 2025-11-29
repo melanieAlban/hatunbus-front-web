@@ -267,13 +267,29 @@
                   <div v-if="getCellInfo(index)?.seatType && getCellInfo(index)?.seatType !== 'NORMAL'" class="seat-type-badge">
                     {{ getSeatTypeLabel(getCellInfo(index)?.seatType) }}
                   </div>
-                  <div v-if="getCellInfo(index)?.additionalPrice && getCellInfo(index)?.additionalPrice > 0" class="seat-price-badge">
-                    +${{ getCellInfo(index)?.additionalPrice.toFixed(2) }}
+                  <div
+                    v-if="(getCellInfo(index)?.additionalPrice ?? 0) > 0"
+                    class="seat-price-badge"
+                  >
+                    +${{ (getCellInfo(index)?.additionalPrice ?? 0).toFixed(2) }}
                   </div>
                 </template>
-                <i v-else-if="getCellInfo(index)?.type === 'bathroom'" class="pi pi-home" title="Baño"></i>
-                <i v-else-if="getCellInfo(index)?.type === 'door'" class="pi pi-sign-in" title="Puerta"></i>
-                <i v-else-if="getCellInfo(index)?.type === 'stairs'" class="pi pi-sort-alt" title="Escaleras"></i>
+                <template
+                  v-else-if="
+                    getCellInfo(index)?.type &&
+                    getCellInfo(index)?.type !== 'empty' &&
+                    getCellInfo(index)?.type !== 'aisle'
+                  "
+                >
+                  <div class="special-content">
+                    <i
+                      v-if="getSpecialIcon(getCellInfo(index)?.type)"
+                      :class="getSpecialIcon(getCellInfo(index)?.type)"
+                      :title="getSpecialLabel(getCellInfo(index)?.type)"
+                    ></i>
+                    <small class="special-label">{{ getSpecialLabel(getCellInfo(index)?.type) }}</small>
+                  </div>
+                </template>
               </div>
             </div>
 
@@ -399,16 +415,30 @@
             <div class="price-summary">
               <div class="price-row">
                 <span><i class="pi pi-ticket"></i> Subtotal ({{ selectedSeats.length }} boletos)</span>
-                <span class="price">${{ calculateSubtotal().toFixed(2) }}</span>
+                <span class="price">${{ lastSaleTotals.subtotal.toFixed(2) }}</span>
               </div>
-              <div class="price-row" v-if="calculateDiscount() > 0">
+              <div class="price-row" v-if="lastSaleTotals.discount > 0">
                 <span><i class="pi pi-percentage"></i> Descuentos</span>
-                <span class="price discount">-${{ calculateDiscount().toFixed(2) }}</span>
+                <span class="price discount">-${{ lastSaleTotals.discount.toFixed(2) }}</span>
+              </div>
+              <div v-if="discountDetails.length" class="discount-breakdown">
+                <div
+                  class="discount-detail"
+                  v-for="detail in discountDetails"
+                  :key="`${detail.seatCode}-${detail.passengerType}`"
+                >
+                  <Tag :value="detail.label" severity="warning" />
+                  <span class="discount-seat">
+                    Asiento {{ detail.seatCode }}
+                    <span v-if="detail.passengerName">- {{ detail.passengerName }}</span>
+                  </span>
+                  <span class="discount-amount">-${{ detail.amount.toFixed(2) }}</span>
+                </div>
               </div>
               <Divider />
               <div class="price-row total">
                 <span><i class="pi pi-dollar"></i> Total a pagar</span>
-                <span class="price">${{ calculateTotal().toFixed(2) }}</span>
+                <span class="price">${{ lastSaleTotals.total.toFixed(2) }}</span>
               </div>
             </div>
           </div>
@@ -460,6 +490,7 @@ import * as cityService from '../services/cityService'
 import * as ticketService from '../services/ticketService'
 import type { CityDto } from '../services/cityService'
 import PurchaseSuccessDialog from '../components/PurchaseSuccessDialog.vue'
+import busService from '../../buses/services/busService'
 
 // Directiva tooltip
 const vTooltip = {
@@ -492,6 +523,12 @@ const selectedRoute = ref<RouteDto | null>(null)
 const paymentMethod = ref<string>('CASH')
 const loading = ref(false)
 const completedPurchase = ref<PurchaseDto | null>(null)
+const busTemplateConfig = ref<Record<string, string> | null>(null)
+const lastSaleTotals = ref({
+  subtotal: 0,
+  discount: 0,
+  total: 0
+})
 
 // Variables para búsqueda de viajes
 const cities = ref<CityDto[]>([])
@@ -595,8 +632,7 @@ const seatRowBlocks = computed(() => {
 
 // Auto-detect number of columns based on seat data
 const hasTemplateLayout = computed(() =>
-  selectedTrip.value?.busTemplate?.seatConfiguration &&
-  Object.keys(selectedTrip.value.busTemplate.seatConfiguration).length > 0
+  busTemplateConfig.value != null && Object.keys(busTemplateConfig.value).length > 0
 )
 
 const GRID_COLUMNS = computed(() => {
@@ -622,7 +658,7 @@ const GRID_COLUMNS = computed(() => {
 
 const GRID_ROWS = computed(() => {
   if (hasTemplateLayout.value) {
-    const config = selectedTrip.value?.busTemplate?.seatConfiguration || {}
+    const config = busTemplateConfig.value || {}
     const maxIndex = Object.keys(config)
       .map(k => Number(k))
       .filter(n => !Number.isNaN(n))
@@ -660,8 +696,10 @@ const availabilityByPos = computed(() => {
   return map
 })
 
+type SpecialCell = 'bathroom' | 'door' | 'stairs' | 'storage' | 'wheelchair'
+
 interface CellInfo {
-  type: 'seat' | 'bathroom' | 'door' | 'stairs' | 'aisle' | 'empty'
+  type: 'seat' | SpecialCell | 'aisle' | 'empty'
   seatCode?: string
   seatType?: string
   additionalPrice?: number
@@ -670,10 +708,12 @@ interface CellInfo {
 
 const seatGridMap = computed(() => {
   const map = new Map<number, CellInfo>()
+  const seatTypes = ['NORMAL', 'VIP', 'SEMI_BED', 'BED']
+  const specialTypes: SpecialCell[] = ['bathroom', 'door', 'stairs', 'storage', 'wheelchair']
 
   // Template-aware layout (5-column grid with especiales)
   if (hasTemplateLayout.value) {
-    const config = selectedTrip.value?.busTemplate?.seatConfiguration || {}
+    const config = busTemplateConfig.value || {}
     Object.entries(config).forEach(([idxStr, typeValue]) => {
       const idx = Number(idxStr)
       if (Number.isNaN(idx)) return
@@ -682,18 +722,21 @@ const seatGridMap = computed(() => {
       const gridIndex = (row - 1) * GRID_COLUMNS.value + column
 
       const availability = availabilityByPos.value.get(`${row}-${column}`)
-      const seatTypes = ['NORMAL', 'VIP', 'SEMI_BED', 'BED']
+      const normalizedSeatType = typeof typeValue === 'string' ? typeValue.toUpperCase() : ''
+      const normalizedSpecial = typeof typeValue === 'string' ? typeValue.toLowerCase() : ''
 
-      if (seatTypes.includes(typeValue)) {
+      if (seatTypes.includes(normalizedSeatType)) {
         map.set(gridIndex, {
           type: 'seat',
-          seatCode: availability?.seatCode || `${gridIndex}`,
-          seatType: typeValue,
+          seatCode: availability?.seatCode || `S${String(idx + 1).padStart(2, '0')}`,
+          seatType: normalizedSeatType,
           additionalPrice: availability?.additionalPrice || 0,
           status: availability?.status || 'available'
         })
-      } else if (typeValue === 'aisle' || typeValue === 'door' || typeValue === 'stairs' || typeValue === 'bathroom') {
-        map.set(gridIndex, { type: typeValue as CellInfo['type'] })
+      } else if (normalizedSpecial === 'aisle') {
+        map.set(gridIndex, { type: 'aisle' })
+      } else if (specialTypes.includes(normalizedSpecial as SpecialCell)) {
+        map.set(gridIndex, { type: normalizedSpecial as SpecialCell })
       } else {
         // cualquier otro valor = celda vacía
         map.set(gridIndex, { type: 'empty' })
@@ -733,15 +776,17 @@ const seatGridMap = computed(() => {
   return map
 })
 
-function getCellInfo(index: number): CellInfo | null {
+function getCellInfo(index: number): CellInfo {
   const cell = seatGridMap.value.get(index)
   if (cell) return cell
 
-  const column = ((index - 1) % GRID_COLUMNS.value) + 1
+  if (!hasTemplateLayout.value) {
+    const column = ((index - 1) % GRID_COLUMNS.value) + 1
 
-  // Aisle default for column 3. Para templates, solo aplica si la celda no está configurada.
-  if (column === 3 && (!hasTemplateLayout.value || !cell)) {
-    return { type: 'aisle' }
+    // Aisle default for column 3 en legacy
+    if (column === 3) {
+      return { type: 'aisle' }
+    }
   }
 
   return { type: 'empty' }
@@ -783,8 +828,13 @@ function getDynamicCellClass(index: number): string {
     return classes.join(' ')
   }
 
+  if (cellInfo.type === 'empty') {
+    classes.push('empty')
+    return classes.join(' ')
+  }
+
   // Special elements
-  if (cellInfo.type === 'bathroom' || cellInfo.type === 'door' || cellInfo.type === 'stairs') {
+  if (['bathroom', 'door', 'stairs', 'storage', 'wheelchair'].includes(cellInfo.type)) {
     classes.push('special-element', cellInfo.type)
   }
 
@@ -808,6 +858,32 @@ function getSeatTypeLabel(seatType?: string): string {
   return labels[seatType || 'NORMAL'] || ''
 }
 
+const specialLabels: Record<string, string> = {
+  bathroom: 'Baño',
+  door: 'Puerta',
+  stairs: 'Escaleras',
+  aisle: 'Pasillo',
+  storage: 'Maletero',
+  wheelchair: 'Acceso'
+}
+
+function getSpecialLabel(type?: string): string {
+  if (!type) return ''
+  return specialLabels[type] || ''
+}
+
+function getSpecialIcon(type?: string): string {
+  if (!type) return ''
+  const icons: Record<string, string> = {
+    bathroom: 'pi pi-home',
+    door: 'pi pi-sign-in',
+    stairs: 'pi pi-sort-alt',
+    storage: 'pi pi-briefcase',
+    wheelchair: 'pi pi-users'
+  }
+  return icons[type] || ''
+}
+
 // ==========================================
 
 const passengerTypes = [
@@ -820,7 +896,6 @@ const passengerTypes = [
 const paymentMethods = [
   { label: 'Efectivo', value: 'CASH', icon: 'pi pi-money-bill' },
   { label: 'Transferencia', value: 'TRANSFER', icon: 'pi pi-building-columns' },
-  { label: 'PayPal', value: 'PAYPAL', icon: 'pi pi-paypal' }
 ]
 
 const BASE_PRICE = 15.00
@@ -1084,15 +1159,31 @@ async function onCooperativeChange() {
   await loadTripsForCooperative(selectedCooperative.value)
 }
 
-  async function onTripChange() {
-    selectedSeats.value = []
-    passengers.value = []
-    seatAvailability.value = []
-
-    if (!selectedTrip.value) return
-
-    loading.value = true
+async function loadBusTemplateForTrip() {
+  busTemplateConfig.value = selectedTrip.value?.busTemplate?.seatConfiguration || null
+  if (
+    (!busTemplateConfig.value || Object.keys(busTemplateConfig.value).length === 0) &&
+    selectedTrip.value?.busId
+  ) {
     try {
+      const bus = await busService.getBusById(selectedTrip.value.busId)
+      busTemplateConfig.value = bus.busTemplate?.seatConfiguration || null
+    } catch (err) {
+      console.warn('No se pudo cargar el template del bus', err)
+    }
+  }
+}
+
+async function onTripChange() {
+  selectedSeats.value = []
+  passengers.value = []
+  seatAvailability.value = []
+
+  if (!selectedTrip.value) return
+
+  loading.value = true
+  try {
+      await loadBusTemplateForTrip()
       const availability = await ticketService.getSeatAvailability(selectedTrip.value.id)
       console.log('=== SEAT AVAILABILITY DEBUG ===')
       console.log('Trip ID:', selectedTrip.value.id)
@@ -1199,9 +1290,59 @@ function calculateDiscount(): number {
   return discount
 }
 
+interface DiscountDetail {
+  seatCode: string
+  passengerName: string
+  passengerType: PassengerType
+  label: string
+  amount: number
+}
+
+const discountRules: Record<PassengerType, { label: string; rate: number }> = {
+  'ADULT': { label: 'Adulto', rate: 0 },
+  'CHILD': { label: 'Niño (50%)', rate: 0.5 },
+  'SENIOR': { label: 'Adulto mayor (30%)', rate: 0.3 },
+  'DISABLED': { label: 'Discapacitado (50%)', rate: 0.5 }
+}
+
+const discountDetails = computed<DiscountDetail[]>(() => {
+  const details: DiscountDetail[] = []
+  selectedSeats.value.forEach((seatCode, index) => {
+    const passenger = passengers.value[index]
+    if (!seatCode || !passenger) return
+    const rule = discountRules[passenger.passengerType]
+    if (!rule || rule.rate <= 0) return
+    const seatPrice = getSeatPrice(seatCode)
+    const amount = seatPrice * rule.rate
+    if (amount <= 0) return
+    details.push({
+      seatCode,
+      passengerName: passenger.passengerName,
+      passengerType: passenger.passengerType,
+      label: rule.label,
+      amount
+    })
+  })
+  return details
+})
+
 function calculateTotal(): number {
   return calculateSubtotal() - calculateDiscount()
 }
+
+function updateLastSaleTotals() {
+  lastSaleTotals.value = {
+    subtotal: Number(calculateSubtotal().toFixed(2)),
+    discount: Number(calculateDiscount().toFixed(2)),
+    total: Number(calculateTotal().toFixed(2))
+  }
+}
+
+watch(
+  [selectedSeats, passengers, seatAvailability],
+  () => updateLastSaleTotals(),
+  { deep: true, immediate: true }
+)
 
 function validateForm(): boolean {
   if (!selectedTrip.value) {
@@ -1986,6 +2127,20 @@ function handleNewSale() {
   cursor: default;
 }
 
+.grid-cell.special-element .special-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.grid-cell.special-element .special-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 .grid-cell.bathroom {
   background-color: #0ea5e9;
   color: white;
@@ -2005,6 +2160,20 @@ function handleNewSale() {
   color: white;
   border: 2px solid #d97706;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.grid-cell.storage {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+  border: 2px solid #93c5fd;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.grid-cell.wheelchair {
+  background-color: #e0f2f1;
+  color: #0f766e;
+  border: 2px solid #14b8a6;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .grid-cell.special-element i {
@@ -2184,6 +2353,39 @@ function handleNewSale() {
 .price.discount {
   color: #e53935;
   font-weight: 700;
+}
+
+.discount-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.5rem 0 1rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  border: 1px dashed rgba(229, 57, 53, 0.3);
+}
+
+.discount-detail {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #92400e;
+}
+
+.discount-detail .p-tag {
+  font-size: 0.75rem;
+}
+
+.discount-seat {
+  flex: 1;
+  color: var(--text-color);
+}
+
+.discount-amount {
+  font-weight: 700;
+  color: #b45309;
 }
 
 .action-buttons {
