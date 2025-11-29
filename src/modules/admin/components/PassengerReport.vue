@@ -18,13 +18,14 @@
           </label>
           <label class="input-group">
             <span>Estado</span>
-            <select v-model="statusFilter" :disabled="loadingTrips">
-              <option value="">Todos</option>
-              <option value="SCHEDULED">Programado</option>
-              <option value="IN_PROGRESS">En curso</option>
-              <option value="COMPLETED">Completado</option>
-              <option value="CANCELED">Cancelado</option>
-            </select>
+            <Dropdown
+              v-model="statusFilter"
+              :options="statusOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Selecciona un estado"
+              :disabled="loadingTrips"
+            />
           </label>
           <Button
             label="Buscar"
@@ -82,7 +83,7 @@
                   </div>
                 </td>
                 <td>
-                  <Tag :value="getStatusText(trip.status)" severity="info" />
+                  <Tag :value="getStatusText(trip.status)" :severity="getTripStatusSeverity(trip.status)" />
                 </td>
                 <td>
                   <Button
@@ -206,6 +207,7 @@ import Button from 'primevue/button'
 import Message from 'primevue/message'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
+import Dropdown from 'primevue/dropdown'
 import { fetchTripReport, fetchTripsByDateRange } from '../../../services/reportService'
 import type { TripReportDto, TripSummaryDto } from '../../../services/reportService'
 import { useCooperativeCustomization } from '../../../composables/useCooperativeCustomization'
@@ -219,7 +221,7 @@ sevenDays.setDate(today.getDate() + 7)
 const startDate = ref(today.toISOString().substring(0, 10))
 const endDate = ref(sevenDays.toISOString().substring(0, 10))
 const busFilter = ref('')
-const statusFilter = ref('')
+const statusFilter = ref('COMPLETED') // Por defecto mostrar solo viajes completados
 
 const loading = ref(false)
 const loadingTrips = ref(false)
@@ -227,6 +229,14 @@ const showModal = ref(false)
 const report = ref<TripReportDto | null>(null)
 const errorMessage = ref<string | null>(null)
 const trips = ref<TripSummaryDto[]>([])
+
+const statusOptions = [
+  { label: 'Todos', value: '' },
+  { label: 'Programado', value: 'SCHEDULED' },
+  { label: 'En curso', value: 'IN_PROGRESS' },
+  { label: 'Completado', value: 'COMPLETED' },
+  { label: 'Cancelado', value: 'CANCELED' },
+]
 
 const statusLabels: Record<string, string> = {
   SCHEDULED: 'Programado',
@@ -236,6 +246,17 @@ const statusLabels: Record<string, string> = {
 }
 
 const getStatusText = (status?: string) => statusLabels[status ?? ''] || status || 'Sin estado'
+
+function getTripStatusSeverity(status: string | undefined): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
+  if (!status) return 'secondary'
+  const severityMap: Record<string, 'success' | 'info' | 'warn' | 'danger' | 'secondary'> = {
+    SCHEDULED: 'info',
+    IN_PROGRESS: 'warn',
+    COMPLETED: 'success',
+    CANCELED: 'danger',
+  }
+  return severityMap[status] || 'secondary'
+}
 
 const filteredTrips = computed(() => {
   return trips.value.filter((trip) => {
@@ -262,10 +283,11 @@ function formatTime(value?: string) {
 function getPassengerStatusText(status: string | undefined): string {
   if (!status) return 'Desconocido'
   const statusMap: Record<string, string> = {
-    CONFIRMED: 'Confirmado',
-    PENDING: 'Pendiente',
+    PAID: 'Pagado',
+    USED: 'Abordó',
+    PENDING_PAYMENT: 'Pendiente de pago',
     CANCELLED: 'Cancelado',
-    COMPLETED: 'Completado',
+    EXPIRED: 'Expirado',
   }
   return statusMap[status] || status
 }
@@ -273,10 +295,11 @@ function getPassengerStatusText(status: string | undefined): string {
 function getPassengerStatusSeverity(status: string | undefined): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
   if (!status) return 'secondary'
   const severityMap: Record<string, 'success' | 'info' | 'warn' | 'danger' | 'secondary'> = {
-    CONFIRMED: 'success',
-    PENDING: 'warn',
+    PAID: 'info',
+    USED: 'success',
+    PENDING_PAYMENT: 'warn',
     CANCELLED: 'danger',
-    COMPLETED: 'info',
+    EXPIRED: 'danger',
   }
   return severityMap[status] || 'secondary'
 }

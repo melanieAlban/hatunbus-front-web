@@ -1425,16 +1425,23 @@ async function submitPurchase() {
     // Si no hay stops o no se encontró ciudad, buscar directamente por nombre
     if (!originCityId || !destinationCityId) {
       console.log('No se encontraron stops válidos, buscando city IDs...')
+      console.log('Buscando ciudades con nombres:', { originCityName, destinationCityName })
+      console.log('Total ciudades disponibles:', cities.value.length)
+      console.log('Primeras 5 ciudades:', cities.value.slice(0, 5).map(c => ({ id: c.id, name: c.name })))
+
       const originCity = cities.value.find(city => city.name === originCityName)
       const destinationCity = cities.value.find(city => city.name === destinationCityName)
-      
+
+      console.log('Ciudad origen encontrada:', originCity)
+      console.log('Ciudad destino encontrada:', destinationCity)
+
       originCityId = originCity?.id
       destinationCityId = destinationCity?.id
-      
+
       console.log('City IDs encontrados:', { originCityId, destinationCityId })
-      
+
       if (!originCityId || !destinationCityId) {
-        notifyError('No se pudieron encontrar las ciudades de origen o destino')
+        notifyError('No se pudieron encontrar las ciudades de origen o destino en el catálogo')
         return
       }
     }
