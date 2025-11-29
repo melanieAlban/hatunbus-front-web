@@ -101,20 +101,39 @@
         <!-- Fila 4: Template y Estado -->
         <div class="form-row">
           <div class="form-group">
-            <label class="p-label">Template *</label>
-            <Dropdown
-              v-model="modelLocal.busTemplateId"
-              :options="availableTemplateOptions"
-              optionLabel="name"
-              optionValue="id"
-              placeholder="Seleccionar template"
-              :loading="loadingTemplates"
-              :class="{ 'p-invalid': errors.busTemplateId }"
-              class="w-full"
-            />
-            <small v-if="errors.busTemplateId" class="p-error">{{ errors.busTemplateId }}</small>
-            <small class="field-hint">El plano y número de asientos se obtienen del template</small>
-          </div>
+              <label class="p-label">Template *</label>
+              <div v-if="props.fixedTemplateId">
+                <div class="fixed-template-display" style="display:flex;flex-direction:column;gap:0.5rem">
+                  <div style="font-weight:600">{{ selectedTemplate?.name || 'Cargando template...' }}</div>
+                  <div style="display:flex;gap:1rem;align-items:center">
+                    <div style="min-width:160px;">
+                      <BusTemplatePreview
+                        :seatConfiguration="selectedTemplate?.seatConfiguration"
+                        :rows="calculateRows(selectedTemplate?.seatConfiguration)"
+                      />
+                    </div>
+                    <div style="font-size:0.95rem;color:var(--text-color-secondary)">
+                      <div><strong>{{ displaySeatCount(selectedTemplate) }}</strong> asientos</div>
+                      <div style="margin-top:0.5rem">{{ selectedTemplate?.description || '' }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div v-else>
+                <Dropdown
+                  v-model="modelLocal.busTemplateId"
+                  :options="availableTemplateOptions"
+                  optionLabel="name"
+                  optionValue="id"
+                  placeholder="Seleccionar template"
+                  :loading="loadingTemplates"
+                  :class="{ 'p-invalid': errors.busTemplateId }"
+                  class="w-full"
+                />
+              </div>
+              <small v-if="errors.busTemplateId" class="p-error">{{ errors.busTemplateId }}</small>
+              <small class="field-hint">El plano y número de asientos se obtienen del template</small>
+            </div>
 
           <div class="form-group">
             <label class="p-label">Estado *</label>
@@ -133,7 +152,7 @@
 
         <!-- Preview + Conductor en la misma fila -->
         <div class="form-row">
-          <div class="form-group">
+          <div class="form-group" v-if="!props.fixedTemplateId">
             <label class="p-label">Previsualización</label>
             <BusTemplatePreview
               :seatConfiguration="selectedTemplate?.seatConfiguration"
@@ -346,6 +365,7 @@ const props = defineProps<{
   visible?: boolean; 
   model?: BusDto | null;
   loading?: boolean;
+  fixedTemplateId?: string | null;
 }>()
 
 const emit = defineEmits<{
@@ -366,6 +386,21 @@ const availableDriverOptions = computed(() => {
     if (!option.assignedBusId) return true
     return props.model?.id && option.assignedBusId === props.model.id
   })
+})
+
+// React to changes on fixedTemplateId (in case the component is reused)
+watch(() => props.fixedTemplateId, async (newId) => {
+  if (!newId) return
+  try {
+    const found = availableTemplates.value.find(t => t.id === newId)
+    if (!found) {
+      const tpl = await templateService.getById(newId)
+      if (tpl) availableTemplates.value.unshift(tpl)
+    }
+    modelLocal.busTemplateId = newId
+  } catch (e) {
+    console.warn('[BusForm] Could not load fixed template on change', newId, e)
+  }
 })
 
 const statusOptions = ref([
@@ -624,6 +659,20 @@ onMounted(async () => {
     const coopId = modelLocal.cooperativeId || authStore.user?.cooperativeId || null
     await loadDriversByCooperative(coopId)
     await loadTemplatesForCooperative(coopId)
+
+    // If the form has a fixed template (opened from a group), ensure it's loaded and selected
+    if (props.fixedTemplateId) {
+      try {
+        const found = availableTemplates.value.find(t => t.id === props.fixedTemplateId)
+        if (!found) {
+          const tpl = await templateService.getById(props.fixedTemplateId)
+          if (tpl) availableTemplates.value.unshift(tpl)
+        }
+        modelLocal.busTemplateId = props.fixedTemplateId
+      } catch (e) {
+        console.warn('[BusForm] Could not load fixed template', props.fixedTemplateId, e)
+      }
+    }
   } catch (e) {
     console.error('[BusForm] error loading cooperatives:', e)
   }
@@ -766,20 +815,6 @@ function onSubmit() {
   padding: 1rem 0;
 }
 
-.dialog-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--text-color);
-}
-
-.bus-form-content {
-  background: var(--card-bg);
-  border-radius: 12px;
-}
-
-.form-container {
-  padding: 1rem;
-}
 
 .form-row {
   display: grid;

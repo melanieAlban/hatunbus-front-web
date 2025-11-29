@@ -352,16 +352,17 @@ function onCancel() {
 
 .template-description {
   margin: 0.5rem 0;
-  font-size: 0.875rem;
-  color: var(--gray-medium);
+  font-size: 0.95rem;
+  color: var(--app-text);
   min-height: 2.5rem;
+  line-height: 1.25;
 }
 
 .template-stats {
   display: flex;
   gap: 1rem;
-  font-size: 0.875rem;
-  color: var(--gray-medium);
+  font-size: 0.95rem;
+  color: var(--app-text);
   margin-top: 0.75rem;
 }
 
