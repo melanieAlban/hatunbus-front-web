@@ -93,3 +93,75 @@ button:focus-visible {
   width: 100%;
   height: 100%;
 }
+
+/* PrimeVue Button Overrides - Use cooperative customization colors */
+.p-button-primary,
+.p-button:not(.p-button-secondary):not(.p-button-success):not(.p-button-info):not(.p-button-warning):not(.p-button-danger):not(.p-button-help):not(.p-button-text):not(.p-button-outlined):not(.p-button-link) {
+  background-color: var(--app-accent) !important;
+  border-color: var(--app-accent) !important;
+  color: white !important;
+}
+
+.p-button-primary:hover:not(:disabled),
+.p-button:not(.p-button-secondary):not(.p-button-success):not(.p-button-info):not(.p-button-warning):not(.p-button-danger):not(.p-button-help):not(.p-button-text):not(.p-button-outlined):not(.p-button-link):hover:not(:disabled) {
+  background-color: var(--app-accent) !important;
+  border-color: var(--app-accent) !important;
+  opacity: 0.9 !important;
+}
+
+.p-button-primary:focus:not(:disabled),
+.p-button:not(.p-button-secondary):not(.p-button-success):not(.p-button-info):not(.p-button-warning):not(.p-button-danger):not(.p-button-help):not(.p-button-text):not(.p-button-outlined):not(.p-button-link):focus:not(:disabled) {
+  background-color: var(--app-accent) !important;
+  border-color: var(--app-accent) !important;
+  box-shadow: 0 0 0 0.2rem rgba(139, 115, 85, 0.2) !important;
+}
+
+/* PrimeVue Button Outlined Overrides - Use secondary color for borders */
+.p-button-outlined:not(.p-button-secondary):not(.p-button-success):not(.p-button-info):not(.p-button-warning):not(.p-button-danger):not(.p-button-help) {
+  border-color: var(--app-accent) !important;
+  color: var(--app-accent) !important;
+  background: transparent !important;
+}
+
+.p-button-outlined:not(.p-button-secondary):not(.p-button-success):not(.p-button-info):not(.p-button-warning):not(.p-button-danger):not(.p-button-help):hover:not(:disabled) {
+  background: var(--app-accent) !important;
+  border-color: var(--app-accent) !important;
+  color: white !important;
+}
+
+.p-button-outlined:not(.p-button-secondary):not(.p-button-success):not(.p-button-info):not(.p-button-warning):not(.p-button-danger):not(.p-button-help):focus:not(:disabled) {
+  border-color: var(--app-accent) !important;
+  box-shadow: 0 0 0 0.2rem rgba(139, 115, 85, 0.2) !important;
+}
+
+/* PrimeVue Input Overrides - White background for all inputs */
+.p-inputtext,
+.p-inputtext:enabled:hover,
+.p-inputtext:enabled:focus,
+.p-dropdown:not(.p-disabled):hover,
+.p-dropdown:not(.p-disabled).p-focus,
+.p-calendar input,
+.p-calendar input:enabled:hover,
+.p-calendar input:enabled:focus,
+.p-inputnumber input,
+.p-inputnumber input:enabled:hover,
+.p-inputnumber input:enabled:focus,
+.p-password input,
+.p-password input:enabled:hover,
+.p-password input:enabled:focus,
+.p-textarea,
+.p-textarea:enabled:hover,
+.p-textarea:enabled:focus,
+.p-autocomplete input,
+.p-autocomplete input:enabled:hover,
+.p-autocomplete input:enabled:focus,
+.p-multiselect:not(.p-disabled):hover,
+.p-multiselect:not(.p-disabled).p-focus {
+  background: white !important;
+  border-color: var(--gray-medium) !important;
+}
+
+.p-dropdown .p-dropdown-label,
+.p-multiselect .p-multiselect-label {
+  background: white !important;
+}

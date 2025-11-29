@@ -56,6 +56,7 @@ export function useCooperativeCustomization() {
     const root = document.documentElement
     root.style.setProperty('--coop-primary-color', primaryColor.value)
     root.style.setProperty('--coop-secondary-color', secondaryColor.value)
+    root.style.setProperty('--app-accent', secondaryColor.value)
   }
 
   // Watch para aplicar colores cuando cambien

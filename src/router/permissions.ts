@@ -15,7 +15,7 @@ export const routePermissions: PermissionMap = {
   AdminSales: ['ADMIN', 'COOPERATIVE', 'CLERK'],
   AdminTickets: ['ADMIN', 'COOPERATIVE', 'CLERK'],
   AdminPendingPayments: ['ADMIN', 'COOPERATIVE', 'CLERK'],
-  AdminPersonalize: ['ADMIN', 'COOPERATIVE'],
+  AdminPersonalize: ['COOPERATIVE'],
 }
 
 export function getRouteRoles(name?: keyof typeof routePermissions | string): UserRole[] | undefined {

@@ -1327,9 +1327,10 @@ function handleNewSale() {
   align-items: center;
   gap: 1rem;
   padding: 1.5rem;
-  background: linear-gradient(135deg, #f8f7f5 0%, #E8DFD5 100%);
+  background: white;
   border-radius: 12px;
   margin-bottom: 1rem;
+  border: 1px solid var(--gray-medium);
 }
 
 .selector-label {
@@ -1351,21 +1352,21 @@ function handleNewSale() {
   width: 3rem;
   height: 3rem;
   border-color: #C9A882 !important;
-  color: #A0826D !important;
+  color: var(--app-accent) !important;
   transition: all 0.3s ease;
 }
 
 .count-controls button:not(:disabled):hover {
-  background-color: #A0826D !important;
+  background-color: var(--app-accent) !important;
   color: white !important;
-  border-color: #A0826D !important;
+  border-color: var(--app-accent) !important;
   transform: scale(1.1);
 }
 
 .count-display {
   font-size: 2rem;
   font-weight: 700;
-  color: #A0826D;
+  color: var(--app-accent);
   min-width: 3rem;
   text-align: center;
   padding: 0.5rem 1rem;
@@ -1450,10 +1451,10 @@ function handleNewSale() {
 
 .bus-layout {
   padding: 2rem;
-  background: linear-gradient(135deg, #F5F1EB 0%, #E8DFD5 100%);
+  background: white;
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border: 2px solid #C9A882;
+  border: 2px solid var(--gray-medium);
 }
 
 .driver-area {
@@ -1471,7 +1472,7 @@ function handleNewSale() {
   font-weight: 600;
   color: #5A4A3A;
   box-shadow: 0 4px 12px rgba(107, 91, 71, 0.15);
-  border: 2px solid #A0826D;
+  border: 2px solid var(--app-accent);
 }
 
 .driver-area i {
@@ -1487,7 +1488,7 @@ function handleNewSale() {
 }
 
 .bus-info i {
-  color: #8B7355;
+  color: var(--app-accent);
 }
 
 .seat-bus-shell {
@@ -1560,7 +1561,7 @@ function handleNewSale() {
 
 .seat-item:hover:not(.disabled):not(.occupied) {
   background: #e7d9c8;
-  border-color: #c9a882;
+  border-color: var(--app-accent);
 }
 
 .seat-item.selected {
@@ -1600,7 +1601,7 @@ function handleNewSale() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #8B7355;
+  color: var(--app-accent);
   text-transform: uppercase;
   letter-spacing: 1px;
   font-size: 0.65rem;
@@ -1708,13 +1709,13 @@ function handleNewSale() {
   left: 0;
   right: 0;
   height: 4px;
-  background: #8B7355;
+  background: var(--app-accent);
   transform: scaleX(0);
   transition: transform 0.3s ease;
 }
 
 .payment-option:hover {
-  border-color: #A0826D;
+  border-color: var(--app-accent);
   transform: translateY(-4px);
   box-shadow: 0 8px 20px rgba(139, 115, 85, 0.2);
 }
@@ -1724,15 +1725,15 @@ function handleNewSale() {
 }
 
 .payment-option.selected {
-  background: linear-gradient(135deg, #E8DFD5 0%, #e3bf97 0%);
-  border-color: #A0826D;
+  background: white;
+  border-color: var(--app-accent);
   color: #5A4A3A;
-  box-shadow: 0 8px 24px rgba(201, 168, 130, 0.3);
+  box-shadow: 0 8px 24px rgba(139, 115, 85, 0.15);
 }
 
 .payment-option.selected::before {
   transform: scaleX(1);
-  background: #A0826D;
+  background: var(--app-accent);
 }
 
 .payment-option i {
@@ -1859,13 +1860,13 @@ function handleNewSale() {
   height: 3rem;
   background-color: #f8f7f5 !important;
   border-color: #C9A882 !important;
-  color: #A0826D !important;
+  color: var(--app-accent) !important;
   transition: all 0.3s ease;
 }
 
 .swap-button:not(:disabled):hover {
   background-color: #E8DFD5 !important;
-  border-color: #A0826D !important;
+  border-color: var(--app-accent) !important;
   color: #76614D !important;
   transform: rotate(180deg);
 }
@@ -1911,15 +1912,17 @@ function handleNewSale() {
   align-items: center;
   gap: 0.75rem;
   padding: 1rem;
-  background: linear-gradient(135deg, #E8DFD5 0%, #C9A882 100%);
+  background: white;
   border-radius: 8px;
   color: #5A4A3A;
   font-size: 1.05rem;
-  border: 2px solid #A0826D;
+  border: 2px solid var(--app-accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .info-banner i {
   font-size: 1.5rem;
+  color: var(--app-accent);
 }
 
 .results-card {
@@ -1941,14 +1944,14 @@ function handleNewSale() {
 }
 
 .trip-card:hover {
-  border-color: #A0826D;
+  border-color: var(--app-accent);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(139, 115, 85, 0.15);
 }
 
 .trip-card.selected {
-  border-color: #8B7355;
-  background: linear-gradient(135deg, #FAF8F4 0%, #E8DFD5 100%);
+  border-color: var(--app-accent);
+  background: white;
   box-shadow: 0 4px 16px rgba(139, 115, 85, 0.25);
 }
 
@@ -1976,7 +1979,7 @@ function handleNewSale() {
 }
 
 .trip-route i {
-  color: #8B7355;
+  color: var(--app-accent);
 }
 
 .trip-info {
@@ -1994,7 +1997,7 @@ function handleNewSale() {
 }
 
 .info-item i {
-  color: #A0826D;
+  color: var(--app-accent);
 }
 
 .no-results-card {
