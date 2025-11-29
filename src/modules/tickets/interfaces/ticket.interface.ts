@@ -151,6 +151,13 @@ export interface RouteDto {
   isActive?: boolean
 }
 
+export interface BusTemplateInfo {
+  id: string
+  name: string
+  seatCount: number
+  seatConfiguration: Record<string, string>
+}
+
 export interface TripSummary {
   id: string
   frequencySegmentId: string
@@ -166,6 +173,8 @@ export interface TripSummary {
   busPlate?: string
   busUnitNumber?: number
   busSeatsCount?: number
+  busTemplateId?: string
+  busTemplate?: BusTemplateInfo
   occupiedSeats?: number
   availableSeats?: number
   cooperativeName?: string
@@ -184,8 +193,11 @@ export interface TripSummary {
 export interface SeatAvailability {
   seatId?: string
   seatCode: string
+  seatNumber?: string
   row?: number
   column?: number
+  floor?: number
   seatType?: string
+  additionalPrice?: number
   status: 'available' | 'occupied'
 }

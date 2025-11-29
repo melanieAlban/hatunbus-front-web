@@ -6,13 +6,18 @@ export enum BusStatus {
 
 export enum SeatType {
   NORMAL = 'NORMAL',
-  VIP = 'VIP'
+  VIP = 'VIP',
+  SEMI_BED = 'SEMI_BED',
+  BED = 'BED'
 }
 
 export interface BusDto {
   id: string
   cooperativeId: string
   cooperativeName?: string
+  busTemplateId?: string | null
+  busTemplate?: BusTemplateDto | null
+  busGroupId?: string | null
   driverId: string
   driverName?: string | null
   driverLicenseNumber?: string | null
@@ -31,6 +36,19 @@ export interface BusDto {
   createdAt?: string
   updatedAt?: string
   seatLayout?: SeatLayoutItem[]
+}
+
+export interface BusTemplateDto {
+  id: string
+  cooperativeId?: string | null
+  cooperativeName?: string | null
+  name: string
+  description?: string
+  seatCount: number
+  seatConfiguration: Record<string, string>
+  active: boolean
+  createdAt: string
+  updatedAt?: string
 }
 
 export interface CreateBusRequest {
@@ -72,9 +90,11 @@ export interface SeatDto {
   displayCode?: string | null
   row?: number | null
   column?: number | null
+  floor?: number | null
   seatType: SeatType
   additionalPrice?: number | null
   status: string
+  createdAt?: string
 }
 
 export interface MaintenanceRecordDto {
