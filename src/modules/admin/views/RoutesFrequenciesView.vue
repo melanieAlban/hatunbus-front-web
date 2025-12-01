@@ -28,12 +28,17 @@
           />
         </TabPanel>
         <TabPanel header="Rutas">
-          <div class="tab-header">
-            <div class="header-actions">
+          <div class="routes-toolbar">
+            <InputText
+              v-model="routeSearch"
+              placeholder="Buscar por nombre, origen o destino"
+              class="route-search-input"
+            />
+            <div class="toolbar-actions">
               <Button
                 icon="pi pi-refresh"
                 label="Refrescar"
-                class="btn-refresh"
+                class="p-button-text"
                 @click="refreshRoutes"
                 :disabled="!selectedCooperativeId || loadingRoutes"
                 :loading="loadingRoutes && !!selectedCooperativeId"
@@ -46,36 +51,6 @@
                 :disabled="!selectedCooperativeId"
               />
             </div>
-          </div>
-
-          <div class="stats-grid">
-            <div class="stat-card">
-              <span class="stat-label">Total de rutas</span>
-              <strong class="stat-value">{{ routes.length }}</strong>
-            </div>
-            <div class="stat-card">
-              <span class="stat-label">Activas</span>
-              <strong class="stat-value success">{{ activeRoutes }}</strong>
-            </div>
-            <div class="stat-card">
-              <span class="stat-label">Inactivas</span>
-              <strong class="stat-value warning">{{ inactiveRoutes }}</strong>
-            </div>
-          </div>
-
-          <div class="routes-section">
-            <div class="card-header">
-              <div>
-                <h3>Listado de rutas</h3>
-                <small>Gestiona las rutas de la cooperativa.</small>
-              </div>
-            </div>
-          <div class="routes-toolbar">
-            <InputText
-              v-model="routeSearch"
-              placeholder="Buscar por nombre, origen o destino"
-              class="route-search-input"
-            />
           </div>
 
           <div v-if="loadingRoutes" class="loading-state">
@@ -94,7 +69,7 @@
               {{ routeSearch ? 'No se encontraron rutas que coincidan con la búsqueda.' : 'No hay rutas registradas para esta cooperativa.' }}
             </p>
           </div>
-          <div v-else>
+          <div v-else class="table-wrapper">
             <DataTable
               :value="filteredRoutes"
               dataKey="id"
@@ -140,13 +115,6 @@
                       v-tooltip.top="'Editar ruta'"
                     />
                     <Button
-                      icon="pi pi-ban"
-                      class="p-button-text p-button-warning"
-                      v-if="data.active"
-                      @click="confirmDeactivateRoute(data)"
-                      v-tooltip.top="'Desactivar ruta'"
-                    />
-                    <Button
                       icon="pi pi-trash"
                       class="p-button-text p-button-danger"
                       @click="confirmDeleteRoute(data)"
@@ -157,7 +125,6 @@
               </Column>
             </DataTable>
           </div>
-        </div>
         </TabPanel>
       </TabView>
     </template>
@@ -1116,17 +1083,26 @@ async function refreshAvailableFrequencies() {
   min-height: 400px;
 }
 
-.card-header {
+.routes-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
 }
 
-.routes-toolbar {
+.toolbar-actions {
   display: flex;
-  justify-content: flex-end;
-  margin-bottom: 0.75rem;
+  gap: 0.5rem;
+}
+
+.table-wrapper {
+  background: white;
+  border: 1px solid var(--surface-border, #e2e8f0);
+  border-radius: 12px;
+  padding: 0.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
 }
 
 .route-search-input {

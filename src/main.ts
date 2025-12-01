@@ -7,6 +7,7 @@ import "./styles/theme.css";
 import PrimeVue from "primevue/config";
 import Tooltip from "primevue/tooltip";
 import ToastService from "primevue/toastservice";
+import ConfirmationService from "primevue/confirmationservice";
 import "primeicons/primeicons.css";
 
 import App from "./App.vue";
@@ -24,6 +25,7 @@ app.use(PrimeVue, {
   },
 });
 app.use(ToastService);
+app.use(ConfirmationService);
 app.directive("tooltip", Tooltip);
 app.use(router);
 

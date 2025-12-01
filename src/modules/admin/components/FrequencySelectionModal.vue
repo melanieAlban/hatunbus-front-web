@@ -164,6 +164,10 @@ const visibleLocal = ref(props.visible)
 const selectedIds = ref<string[]>([...props.modelValue])
 const searchQuery = ref('')
 
+const sanitizedFrequencies = computed(() =>
+  props.frequencies.map(stripCompositeSegments)
+)
+
 watch(() => props.visible, (val) => {
   visibleLocal.value = val
   if (val) {
@@ -178,11 +182,11 @@ watch(visibleLocal, (val) => {
 
 const filteredFrequencies = computed(() => {
   if (!searchQuery.value.trim()) {
-    return props.frequencies
+    return sanitizedFrequencies.value
   }
 
   const query = searchQuery.value.toLowerCase().trim()
-  return props.frequencies.filter(freq => {
+  return sanitizedFrequencies.value.filter(freq => {
     const routeLabel = getFrequencyRouteLabel(freq).toLowerCase()
     const name = (freq.name || freq.regulatoryResolution || '').toLowerCase()
 
@@ -258,6 +262,17 @@ function formatDuration(minutes: number): string {
     return `${hours}h ${mins}m`
   }
   return `${mins}m`
+}
+
+function stripCompositeSegments(freq: FrequencyWithSegmentsDto): FrequencyWithSegmentsDto {
+  return {
+    ...freq,
+    segments: (freq.segments || []).filter(segment => !isCompositeSegment(segment))
+  }
+}
+
+function isCompositeSegment(segment: { segmentOrder?: number }) {
+  return segment.segmentOrder !== undefined && segment.segmentOrder >= 900
 }
 </script>
 

@@ -1,30 +1,7 @@
 <template>
   <div class="route-sheet-list">
-    <div class="list-header">
-      <div class="header-info">
-        <h3>Hojas de Ruta Generadas</h3>
-        <p class="subtitle">Visualiza y gestiona las hojas de ruta creadas por grupos de buses</p>
-      </div>
-      <button class="btn-primary" @click="refreshList" :disabled="loading">
-        <i :class="loading ? 'pi pi-spin pi-spinner' : 'pi pi-refresh'"></i>
-        Actualizar
-      </button>
-    </div>
-
-    <div class="filters-bar">
-      <div class="filter-group">
-        <label>Grupo de Buses</label>
-        <Dropdown
-          v-model="selectedGroupFilter"
-          :options="groupFilterOptions"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="Todos los grupos"
-          class="filter-dropdown"
-        />
-      </div>
-      <div class="filter-group">
-        <label>Estado</label>
+    <div class="toolbar">
+      <div class="filters">
         <Dropdown
           v-model="selectedStatusFilter"
           :options="statusFilterOptions"
@@ -33,6 +10,12 @@
           placeholder="Todos los estados"
           class="filter-dropdown"
         />
+      </div>
+      <div class="toolbar-actions">
+        <button class="btn-ghost" @click="refreshList" :disabled="loading">
+          <i :class="loading ? 'pi pi-spin pi-spinner' : 'pi pi-refresh'"></i>
+          Refrescar
+        </button>
       </div>
     </div>
 
@@ -46,83 +29,104 @@
       <span>{{ error }}</span>
     </div>
 
-    <div v-else-if="filteredRouteSheets.length === 0" class="empty-state">
-      <i class="pi pi-inbox"></i>
-      <p>No hay hojas de ruta generadas</p>
-      <p class="hint">Usa el tab "Crear Hoja de Ruta" para generar una nueva</p>
-    </div>
-
-    <div v-else class="route-sheets-grid">
-      <div
-        v-for="sheet in filteredRouteSheets"
-        :key="sheet.id"
-        class="route-sheet-card"
+    <div v-else class="table-wrapper">
+      <DataTable
+        v-if="filteredRouteSheets.length"
+        :value="filteredRouteSheets"
+        dataKey="id"
+        responsiveLayout="scroll"
+        :rows="10"
+        :paginator="filteredRouteSheets.length > 10"
+        :rowsPerPageOptions="[10, 20, 50]"
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
+        class="route-sheet-table"
       >
-        <div class="card-header">
-          <div class="card-title">
-            <h4>{{ sheet.name }}</h4>
-            <Tag
-              :value="getStatusLabel(sheet.status)"
-              :severity="getStatusSeverity(sheet.status)"
-            />
-          </div>
-          <div class="card-meta">
-            <span class="meta-item">
+        <Column field="name" header="Nombre" style="min-width: 240px">
+          <template #body="{ data }">
+            <div class="name-cell">
+              <div class="name">{{ data.name }}</div>
+              <div class="meta">
+                <Tag
+                  :value="getStatusLabel(data.status)"
+                  :severity="getStatusSeverity(data.status)"
+                  class="mr-2"
+                />
+                <span class="pill">
+                  <i class="pi pi-sitemap"></i>
+                  {{ data.generationMode === 'AUTOMATIC' ? 'Automática' : 'Manual' }}
+                </span>
+              </div>
+            </div>
+          </template>
+        </Column>
+
+        <Column header="Período" style="min-width: 220px">
+          <template #body="{ data }">
+            <div class="period">
               <i class="pi pi-calendar"></i>
-              {{ formatDate(sheet.startDate) }} - {{ formatDate(sheet.endDate) }}
-            </span>
-            <span class="meta-item">
-              <i class="pi pi-sitemap"></i>
-              {{ sheet.generationMode === 'AUTOMATIC' ? 'Automática' : 'Manual' }}
-            </span>
-          </div>
-        </div>
+              {{ formatDate(data.startDate) }} — {{ formatDate(data.endDate) }}
+            </div>
+          </template>
+        </Column>
 
-        <div class="card-stats">
-          <div class="stat-item">
-            <div class="stat-value">{{ getDurationDays(sheet) }}</div>
-            <div class="stat-label">Días</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">{{ sheet.detailCount || '-' }}</div>
-            <div class="stat-label">Detalles</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">{{ formatDateTime(sheet.createdAt) }}</div>
-            <div class="stat-label">Creado</div>
-          </div>
-        </div>
+        <Column header="Días" style="width: 90px">
+          <template #body="{ data }">
+            <span class="strong">{{ getDurationDays(data) }}</span>
+          </template>
+        </Column>
 
-        <div class="card-actions">
-          <button class="btn-ghost btn-sm" @click="viewDetails(sheet)">
-            <i class="pi pi-eye"></i>
-            Ver Detalles
-          </button>
-          <button class="btn-ghost btn-sm" @click="viewMatrix(sheet)">
-            <i class="pi pi-table"></i>
-            Ver Matriz
-          </button>
-          <button
-            v-if="sheet.status === 'ACTIVE'"
-            class="btn-ghost btn-sm btn-warning"
-            @click="changeStatus(sheet, 'INACTIVE')"
-          >
-            <i class="pi pi-pause"></i>
-            Desactivar
-          </button>
-          <button
-            v-else
-            class="btn-ghost btn-sm btn-success"
-            @click="changeStatus(sheet, 'ACTIVE')"
-          >
-            <i class="pi pi-play"></i>
-            Activar
-          </button>
-          <button class="btn-ghost btn-sm btn-danger" @click="deleteSheet(sheet)">
-            <i class="pi pi-trash"></i>
-            Eliminar
-          </button>
-        </div>
+        <Column header="Detalles" style="width: 110px">
+          <template #body="{ data }">
+            <Tag :value="data.detailCount || 0" severity="info" />
+          </template>
+        </Column>
+
+        <Column header="Creado" style="min-width: 170px">
+          <template #body="{ data }">
+            {{ formatDateTime(data.createdAt) }}
+          </template>
+        </Column>
+
+        <Column header="Acciones" style="min-width: 280px">
+          <template #body="{ data }">
+            <div class="row-actions">
+              <button class="btn-ghost btn-sm" @click="viewDetails(data)">
+                <i class="pi pi-eye"></i>
+                Ver Detalles
+              </button>
+              <button class="btn-ghost btn-sm" @click="viewMatrix(data)">
+                <i class="pi pi-table"></i>
+                Ver Matriz
+              </button>
+              <button
+                v-if="data.status === 'ACTIVE'"
+                class="btn-ghost btn-sm btn-warning"
+                @click="changeStatus(data, 'INACTIVE')"
+              >
+                <i class="pi pi-pause"></i>
+                Desactivar
+              </button>
+              <button
+                v-else
+                class="btn-ghost btn-sm btn-success"
+                @click="changeStatus(data, 'ACTIVE')"
+              >
+                <i class="pi pi-play"></i>
+                Activar
+              </button>
+              <button class="btn-ghost btn-sm btn-danger" @click="deleteSheet(data)">
+                <i class="pi pi-trash"></i>
+                Eliminar
+              </button>
+            </div>
+          </template>
+        </Column>
+      </DataTable>
+
+      <div v-else class="empty-state">
+        <i class="pi pi-inbox"></i>
+        <p>No hay hojas de ruta generadas</p>
+        <p class="hint">Usa el tab "Crear Hoja de Ruta" para generar una nueva</p>
       </div>
     </div>
 
@@ -154,7 +158,6 @@
 
         <div v-else-if="matrixData" class="matrix-grid-wrapper">
           <div class="matrix-grid" :style="gridStyles">
-            <!-- Header Row -->
             <div class="header-cell sticky-col" style="grid-column: 1;">Hora</div>
             <div class="header-cell sticky-col" style="grid-column: 2;">Ruta</div>
             <div
@@ -166,7 +169,6 @@
               {{ formatMatrixDate(date) }}
             </div>
 
-            <!-- Data Rows -->
             <template v-for="(row, rowIdx) in matrixData.rows" :key="rowIdx">
               <div
                 class="data-cell sticky-col time-label"
@@ -250,7 +252,7 @@
           <p>No hay detalles disponibles</p>
         </div>
 
-        <DataTable v-else :value="sheetDetails" :scrollable="true" scrollHeight="400px">
+        <DataTable v-else :value="visibleSheetDetails" :scrollable="true" scrollHeight="400px">
           <Column field="routeName" header="Ruta" style="min-width: 200px"></Column>
           <Column field="routeOrigin" header="Origen" style="min-width: 150px"></Column>
           <Column field="routeDestination" header="Destino" style="min-width: 150px"></Column>
@@ -264,342 +266,465 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useAuthStore } from '@/modules/auth/store/useAuthStore'
-import { success, error as notifyError, confirm } from '@/lib/notifier'
-import Dropdown from 'primevue/dropdown'
-import Tag from 'primevue/tag'
-import Dialog from 'primevue/dialog'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
-import apiClient from '@/services/apiClient'
+import { ref, computed, onMounted } from "vue";
+import { useAuthStore } from "@/modules/auth/store/useAuthStore";
+import { success, error as notifyError, confirm } from "@/lib/notifier";
+import Dropdown from "primevue/dropdown";
+import Tag from "primevue/tag";
+import Dialog from "primevue/dialog";
+import DataTable from "primevue/datatable";
+import Column from "primevue/column";
+import apiClient from "@/services/apiClient";
 
 interface RouteSheetDto {
-  id: string
-  cooperativeId: string
-  name: string
-  startDate: string
-  endDate: string
-  generationMode: 'AUTOMATIC' | 'MANUAL'
-  status: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED'
-  createdAt: string
-  updatedAt: string
-  detailCount?: number
+  id: string;
+  cooperativeId: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  generationMode: "AUTOMATIC" | "MANUAL";
+  status: "ACTIVE" | "INACTIVE" | "ARCHIVED";
+  createdAt: string;
+  updatedAt: string;
+  detailCount?: number;
 }
 
 interface RouteSheetDetailDto {
-  id: string
-  routeSheetId: string
-  frequencySegmentId: string
-  routeName: string
-  routeOrigin: string
-  routeDestination: string
-  departureTime: string
-  frequencyName: string
-  segmentOrder: number
-  busId: string
-  busPlate: string
-  busBrand: string
-  primaryDriverId: string
-  driverName: string
-  driverLicense: string
-  operatingDays: string[]
-  createdAt: string
+  id: string;
+  routeSheetId: string;
+  frequencySegmentId: string;
+  routeName: string;
+  routeOrigin: string;
+  routeDestination: string;
+  departureTime: string;
+  frequencyName: string;
+  segmentOrder: number;
+  busId: string;
+  busPlate: string;
+  busBrand: string;
+  primaryDriverId: string;
+  driverName: string;
+  driverLicense: string;
+  operatingDays: string[];
+  createdAt: string;
 }
 
-const auth = useAuthStore()
+const auth = useAuthStore();
 
-const loading = ref(false)
-const error = ref<string | null>(null)
-const routeSheets = ref<RouteSheetDto[]>([])
-const selectedGroupFilter = ref<string | null>(null)
-const selectedStatusFilter = ref<string | null>(null)
-const showDetailsDialog = ref(false)
-const selectedSheet = ref<RouteSheetDto | null>(null)
-const loadingDetails = ref(false)
-const sheetDetails = ref<RouteSheetDetailDto[]>([])
-const showMatrixDialog = ref(false)
-const loadingMatrix = ref(false)
-const matrixError = ref<string | null>(null)
-const matrixData = ref<any>(null)
+const loading = ref(false);
+const error = ref<string | null>(null);
+const routeSheets = ref<RouteSheetDto[]>([]);
+const selectedGroupFilter = ref<string | null>(null);
+const selectedStatusFilter = ref<string | null>(null);
+const showDetailsDialog = ref(false);
+const selectedSheet = ref<RouteSheetDto | null>(null);
+const loadingDetails = ref(false);
+const sheetDetails = ref<RouteSheetDetailDto[]>([]);
+const showMatrixDialog = ref(false);
+const loadingMatrix = ref(false);
+const matrixError = ref<string | null>(null);
+const matrixData = ref<any>(null);
 
-const groupFilterOptions = ref([
-  { label: 'Todos los grupos', value: null },
-])
+const visibleSheetDetails = computed(() =>
+  sheetDetails.value.filter((detail) => !isCompositeSegment(detail))
+);
+
+const groupFilterOptions = ref([{ label: "Todos los grupos", value: null }]);
 
 const statusFilterOptions = ref([
-  { label: 'Todos los estados', value: null },
-  { label: 'Activas', value: 'ACTIVE' },
-  { label: 'Inactivas', value: 'INACTIVE' },
-  { label: 'Archivadas', value: 'ARCHIVED' },
-])
+  { label: "Todos los estados", value: null },
+  { label: "Activas", value: "ACTIVE" },
+  { label: "Inactivas", value: "INACTIVE" },
+  { label: "Archivadas", value: "ARCHIVED" },
+]);
 
 const filteredRouteSheets = computed(() => {
-  let filtered = routeSheets.value
+  let filtered = routeSheets.value;
 
   if (selectedStatusFilter.value) {
-    filtered = filtered.filter(sheet => sheet.status === selectedStatusFilter.value)
+    filtered = filtered.filter(
+      (sheet) => sheet.status === selectedStatusFilter.value
+    );
   }
 
-  return filtered
-})
+  return filtered;
+});
 
 onMounted(() => {
-  loadRouteSheets()
-})
+  loadRouteSheets();
+});
 
 async function loadRouteSheets() {
-  if (!auth.user?.cooperativeId) return
+  if (!auth.user?.cooperativeId) return;
 
-  loading.value = true
-  error.value = null
+  loading.value = true;
+  error.value = null;
   try {
-    const response = await apiClient.get(`/hojas-ruta/cooperativa/${auth.user.cooperativeId}`)
-    routeSheets.value = response.data
+    const response = await apiClient.get(
+      `/hojas-ruta/cooperativa/${auth.user.cooperativeId}`
+    );
+    routeSheets.value = response.data;
   } catch (err: any) {
-    error.value = err?.response?.data?.message || 'Error al cargar las hojas de ruta'
-    console.error('Error loading route sheets:', err)
+    error.value =
+      err?.response?.data?.message || "Error al cargar las hojas de ruta";
+    console.error("Error loading route sheets:", err);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 async function refreshList() {
-  await loadRouteSheets()
-  success('Lista actualizada', 'Las hojas de ruta se han actualizado correctamente')
+  await loadRouteSheets();
+  success(
+    "Lista actualizada",
+    "Las hojas de ruta se han actualizado correctamente"
+  );
 }
 
+defineExpose({
+  reload: loadRouteSheets,
+});
+
 async function viewDetails(sheet: RouteSheetDto) {
-  selectedSheet.value = sheet
-  showDetailsDialog.value = true
-  loadingDetails.value = true
+  selectedSheet.value = sheet;
+  showDetailsDialog.value = true;
+  loadingDetails.value = true;
 
   try {
-    const response = await apiClient.get(`/hojas-ruta/${sheet.id}/detalles`)
-    sheetDetails.value = response.data
+    const response = await apiClient.get(`/hojas-ruta/${sheet.id}/detalles`);
+    sheetDetails.value = response.data;
   } catch (err: any) {
-    notifyError('Error', 'No se pudieron cargar los detalles')
-    console.error('Error loading details:', err)
+    notifyError("Error", "No se pudieron cargar los detalles");
+    console.error("Error loading details:", err);
   } finally {
-    loadingDetails.value = false
+    loadingDetails.value = false;
   }
 }
 
 async function viewMatrix(sheet: RouteSheetDto) {
-  selectedSheet.value = sheet
-  showMatrixDialog.value = true
-  loadingMatrix.value = true
-  matrixError.value = null
+  selectedSheet.value = sheet;
+  showMatrixDialog.value = true;
+  loadingMatrix.value = true;
+  matrixError.value = null;
 
   try {
-    // Cargar los detalles de la hoja de ruta
-    const response = await apiClient.get(`/hojas-ruta/${sheet.id}/detalles`)
-    const details: RouteSheetDetailDto[] = response.data
-
-    // Construir matriz a partir de los detalles
-    matrixData.value = buildMatrixFromDetails(details, sheet)
+    const response = await apiClient.get(`/hojas-ruta/${sheet.id}/detalles`);
+    const details: RouteSheetDetailDto[] = response.data.filter(
+      (d) => !isCompositeSegment(d)
+    );
+    matrixData.value = buildMatrixFromDetails(details, sheet);
   } catch (err: any) {
-    matrixError.value = err?.response?.data?.message || 'No se pudo cargar la matriz'
-    console.error('Error loading matrix:', err)
+    matrixError.value =
+      err?.response?.data?.message || "No se pudo cargar la matriz";
+    console.error("Error loading matrix:", err);
   } finally {
-    loadingMatrix.value = false
+    loadingMatrix.value = false;
   }
 }
 
-function buildMatrixFromDetails(details: RouteSheetDetailDto[], sheet: RouteSheetDto) {
-  // Generar rango de fechas
-  const start = new Date(sheet.startDate + 'T00:00:00')
-  const end = new Date(sheet.endDate + 'T00:00:00')
-  const dates: string[] = []
+function buildMatrixFromDetails(
+  details: RouteSheetDetailDto[],
+  sheet: RouteSheetDto
+) {
+  const start = new Date(sheet.startDate + "T00:00:00");
+  const end = new Date(sheet.endDate + "T00:00:00");
+  const dates: string[] = [];
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    dates.push(d.toISOString().split('T')[0])
+    dates.push(d.toISOString().split("T")[0]);
   }
 
-  // Agrupar por PARADA (cada segmento individual)
-  const stopMap = new Map<string, {
-    label: string
-    meta: string
-    type: string
-    departureTime: string
-    cells: Record<string, { type: string, buses: number[] }>
-  }>()
+  const dayNames = [
+    "SUNDAY",
+    "MONDAY",
+    "TUESDAY",
+    "WEDNESDAY",
+    "THURSDAY",
+    "FRIDAY",
+    "SATURDAY",
+  ];
+  const allBuses = new Set<number>();
 
-  // Recopilar todos los buses únicos
-  const allBuses = new Set<number>()
+  const frequencyMap = new Map<
+    string,
+    {
+      frequencyName: string;
+      firstOrigin: string;
+      lastDestination: string;
+      firstTime: string;
+      segments: Map<
+        string,
+        { time: string; origin: string; destination: string; order: number }
+      >;
+      busesByDate: Map<string, Set<number>>;
+    }
+  >();
 
   for (const detail of details) {
-    // Clave única por segmento: hora + origen + destino
-    const time = detail.departureTime || '00:00'
-    const key = `${time}_${detail.routeOrigin}_${detail.routeDestination}`
+    const freqName = detail.frequencyName;
+    if (!freqName) continue;
 
-    if (!stopMap.has(key)) {
-      stopMap.set(key, {
-        label: `${detail.routeOrigin} - ${detail.routeDestination}`,
-        meta: time.substring(0, 5), // HH:MM
-        type: 'TRIP',
-        departureTime: time,
-        cells: {}
-      })
+    const busNumber = detail.busUnitNumber;
+    if (busNumber) allBuses.add(busNumber);
+
+    if (!frequencyMap.has(freqName)) {
+      frequencyMap.set(freqName, {
+        frequencyName: freqName,
+        firstOrigin: "",
+        lastDestination: "",
+        firstTime: "99:99",
+        segments: new Map(),
+        busesByDate: new Map(),
+      });
     }
 
-    const row = stopMap.get(key)!
+    const freq = frequencyMap.get(freqName)!;
+    const segOrder = detail.segmentOrder ?? 0;
+    const time = detail.departureTime?.toString().substring(0, 5) || "00:00";
 
-    // Inicializar celdas
-    for (const date of dates) {
-      if (!row.cells[date]) {
-        row.cells[date] = { type: 'TRIP', buses: [] }
-      }
+    const segKey = `${detail.routeOrigin}-${detail.routeDestination}`;
+    if (!freq.segments.has(segKey)) {
+      freq.segments.set(segKey, {
+        time,
+        origin: detail.routeOrigin || "",
+        destination: detail.routeDestination || "",
+        order: segOrder,
+      });
     }
 
-    // Agregar bus (número de unidad) según operatingDays
-    const busNumber = detail.busUnitNumber
-    if (busNumber) {
-      allBuses.add(busNumber)
+    const currentSeg = freq.segments.get(segKey)!;
+    if (
+      segOrder <=
+      Math.min(...Array.from(freq.segments.values()).map((s) => s.order))
+    ) {
+      freq.firstOrigin = detail.routeOrigin || "";
+      if (time < freq.firstTime) freq.firstTime = time;
+    }
+    if (
+      segOrder >=
+      Math.max(...Array.from(freq.segments.values()).map((s) => s.order))
+    ) {
+      freq.lastDestination = detail.routeDestination || "";
+    }
 
+    if (busNumber && detail.operatingDays) {
       for (const date of dates) {
-        const dayOfWeek = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()
-        const dayMap: Record<string, string> = {
-          'MON': 'MONDAY', 'TUE': 'TUESDAY', 'WED': 'WEDNESDAY',
-          'THU': 'THURSDAY', 'FRI': 'FRIDAY', 'SAT': 'SATURDAY', 'SUN': 'SUNDAY'
-        }
-        const fullDay = dayMap[dayOfWeek]
-
-        if (detail.operatingDays && detail.operatingDays.includes(fullDay)) {
-          if (!row.cells[date].buses.includes(busNumber)) {
-            row.cells[date].buses.push(busNumber)
+        const dayOfWeek = new Date(date + "T00:00:00").getDay();
+        const fullDay = dayNames[dayOfWeek];
+        if (detail.operatingDays.includes(fullDay)) {
+          if (!freq.busesByDate.has(date)) {
+            freq.busesByDate.set(date, new Set());
           }
+          freq.busesByDate.get(date)!.add(busNumber);
         }
       }
     }
   }
 
-  // Ordenar filas por hora de salida
-  const sortedRows = Array.from(stopMap.values()).sort((a, b) =>
-    a.departureTime.localeCompare(b.departureTime)
-  )
+  const freqArray = Array.from(frequencyMap.values());
+  const orderedFrequencies = orderFrequenciesAsChain(freqArray);
 
-  // Agregar fila de PARADA
-  const paradaRow = {
-    label: 'PARADA',
-    meta: 'Descanso',
-    type: 'REST',
-    departureTime: '99:99',
-    cells: {} as Record<string, { type: string, buses: number[] }>
-  }
+  const rows: Array<{
+    label: string;
+    meta: string;
+    type: string;
+    cells: Record<string, { type: string; buses: number[] }>;
+  }> = [];
 
-  // Inicializar celdas de parada
-  for (const date of dates) {
-    paradaRow.cells[date] = { type: 'REST', buses: [] }
+  for (const freq of orderedFrequencies) {
+    const segmentsArray = Array.from(freq.segments.values()).sort(
+      (a, b) => a.order - b.order
+    );
 
-    // Buses que están en parada = buses que NO aparecen en ninguna parada ese día
-    const busesWorkingToday = new Set<number>()
-    for (const row of sortedRows) {
-      if (row.cells[date]) {
-        row.cells[date].buses.forEach(bus => busesWorkingToday.add(bus))
-      }
+    const label = segmentsArray
+      .map((s) => `${s.origin} - ${s.destination}`)
+      .join("\n");
+    const meta = segmentsArray.map((s) => s.time).join("\n");
+
+    const cells: Record<string, { type: string; buses: number[] }> = {};
+    for (const date of dates) {
+      const buses = freq.busesByDate.get(date);
+      const busArray = buses ? Array.from(buses).sort((a, b) => a - b) : [];
+      cells[date] = {
+        type: "TRIP",
+        buses: busArray.length > 0 ? [busArray[0]] : [],
+      };
     }
 
-    // Agregar buses en descanso
-    allBuses.forEach(bus => {
-      if (!busesWorkingToday.has(bus)) {
-        paradaRow.cells[date].buses.push(bus)
-      }
-    })
+    rows.push({ label, meta, type: "TRIP", cells });
   }
 
-  sortedRows.push(paradaRow)
-
-  return {
-    dates,
-    rows: sortedRows
+  const paradaCells: Record<string, { type: string; buses: number[] }> = {};
+  for (const date of dates) {
+    const busesWorking = new Set<number>();
+    rows.forEach((row) =>
+      row.cells[date]?.buses.forEach((b) => busesWorking.add(b))
+    );
+    const busesResting = Array.from(allBuses)
+      .filter((b) => !busesWorking.has(b))
+      .sort((a, b) => a - b);
+    paradaCells[date] = { type: "REST", buses: busesResting };
   }
+
+  rows.push({ label: "PARADA", meta: "", type: "REST", cells: paradaCells });
+
+  return { dates, rows };
+}
+
+function orderFrequenciesAsChain(
+  frequencies: Array<{
+    frequencyName: string;
+    firstOrigin: string;
+    lastDestination: string;
+    firstTime: string;
+    segments: Map<string, any>;
+    busesByDate: Map<string, Set<number>>;
+  }>
+) {
+  if (frequencies.length <= 1) return frequencies;
+
+  let bestChain: typeof frequencies = [];
+
+  for (const potentialStart of frequencies) {
+    const currentChain: typeof frequencies = [];
+    const used = new Set<string>();
+
+    let current: typeof potentialStart | undefined = potentialStart;
+
+    while (current) {
+      currentChain.push(current);
+      used.add(current.frequencyName);
+
+      const destination = current.lastDestination;
+      current = frequencies.find(
+        (f) => !used.has(f.frequencyName) && f.firstOrigin === destination
+      );
+    }
+
+    if (currentChain.length > bestChain.length) {
+      bestChain = currentChain;
+    }
+  }
+
+  const usedNames = new Set(bestChain.map((f) => f.frequencyName));
+  for (const freq of frequencies) {
+    if (!usedNames.has(freq.frequencyName)) {
+      bestChain.push(freq);
+    }
+  }
+
+  return bestChain;
 }
 
 const gridStyles = computed(() => {
-  const numCols = (matrixData.value?.dates.length || 0) + 2
+  const numCols = (matrixData.value?.dates.length || 0) + 2;
   return {
-    gridTemplateColumns: `80px 280px repeat(${matrixData.value?.dates.length || 0}, 120px)`
-  }
-})
+    gridTemplateColumns: `80px 280px repeat(${
+      matrixData.value?.dates.length || 0
+    }, 120px)`,
+  };
+});
 
 function getCellClass(cell: any) {
-  if (!cell || !cell.buses || cell.buses.length === 0) return 'cell-empty'
-  return 'cell-has-buses'
+  if (!cell || !cell.buses || cell.buses.length === 0) return "cell-empty";
+  return "cell-has-buses";
 }
 
 function formatMatrixDate(dateStr: string) {
-  const date = new Date(dateStr + 'T00:00:00')
-  return date.toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: 'short' })
+  const date = new Date(dateStr + "T00:00:00");
+  return date.toLocaleDateString("es-ES", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+  });
 }
 
 async function changeStatus(sheet: RouteSheetDto, newStatus: string) {
   try {
-    await apiClient.patch(`/hojas-ruta/${sheet.id}/estado?estado=${newStatus}`)
-    success('Estado actualizado', `Hoja de ruta ${newStatus === 'ACTIVE' ? 'activada' : 'desactivada'}`)
-    await loadRouteSheets()
+    await apiClient.patch(`/hojas-ruta/${sheet.id}/estado?estado=${newStatus}`);
+    success(
+      "Estado actualizado",
+      `Hoja de ruta ${newStatus === "ACTIVE" ? "activada" : "desactivada"}`
+    );
+    await loadRouteSheets();
   } catch (err: any) {
-    notifyError('Error', err?.response?.data?.message || 'No se pudo cambiar el estado')
+    notifyError(
+      "Error",
+      err?.response?.data?.message || "No se pudo cambiar el estado"
+    );
   }
 }
 
 async function deleteSheet(sheet: RouteSheetDto) {
   const confirmed = await confirm({
-    title: 'Eliminar Hoja de Ruta',
+    title: "Eliminar Hoja de Ruta",
     message: `¿Estás seguro de eliminar "${sheet.name}"? Esta acción no se puede deshacer.`,
-    acceptLabel: 'Sí, Eliminar',
-    rejectLabel: 'Cancelar',
-  })
+    acceptLabel: "Sí, Eliminar",
+    rejectLabel: "Cancelar",
+  });
 
-  if (!confirmed) return
+  if (!confirmed) return;
 
   try {
-    await apiClient.delete(`/hojas-ruta/${sheet.id}`)
-    success('Eliminada', 'Hoja de ruta eliminada correctamente')
-    await loadRouteSheets()
+    await apiClient.delete(`/hojas-ruta/${sheet.id}`);
+    success("Eliminada", "Hoja de ruta eliminada correctamente");
+    await loadRouteSheets();
   } catch (err: any) {
-    notifyError('Error', err?.response?.data?.message || 'No se pudo eliminar la hoja de ruta')
+    notifyError(
+      "Error",
+      err?.response?.data?.message || "No se pudo eliminar la hoja de ruta"
+    );
   }
 }
 
 function getStatusLabel(status: string): string {
   const map: Record<string, string> = {
-    ACTIVE: 'Activa',
-    INACTIVE: 'Inactiva',
-    ARCHIVED: 'Archivada',
-  }
-  return map[status] || status
+    ACTIVE: "Activa",
+    INACTIVE: "Inactiva",
+    ARCHIVED: "Archivada",
+  };
+  return map[status] || status;
 }
 
-function getStatusSeverity(status: string): 'success' | 'danger' | 'warning' | 'info' {
-  const map: Record<string, 'success' | 'danger' | 'warning' | 'info'> = {
-    ACTIVE: 'success',
-    INACTIVE: 'warning',
-    ARCHIVED: 'danger',
-  }
-  return map[status] || 'info'
+function getStatusSeverity(
+  status: string
+): "success" | "danger" | "warning" | "info" {
+  const map: Record<string, "success" | "danger" | "warning" | "info"> = {
+    ACTIVE: "success",
+    INACTIVE: "warning",
+    ARCHIVED: "danger",
+  };
+  return map[status] || "info";
 }
 
 function formatDate(dateStr: string): string {
-  const date = new Date(dateStr + 'T00:00:00')
-  return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric' })
+  const date = new Date(dateStr + "T00:00:00");
+  return date.toLocaleDateString("es-ES", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function formatDateTime(dateStr: string): string {
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('es-ES', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  const date = new Date(dateStr);
+  return date.toLocaleDateString("es-ES", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function getDurationDays(sheet: RouteSheetDto): number {
-  const start = new Date(sheet.startDate + 'T00:00:00')
-  const end = new Date(sheet.endDate + 'T00:00:00')
-  const diff = end.getTime() - start.getTime()
-  return Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1
+  const start = new Date(sheet.startDate + "T00:00:00");
+  const end = new Date(sheet.endDate + "T00:00:00");
+  const diff = end.getTime() - start.getTime();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1;
+}
+
+function isCompositeSegment(detail: { segmentOrder?: number }) {
+  return detail.segmentOrder !== undefined && detail.segmentOrder >= 900;
 }
 </script>
 
@@ -608,47 +733,27 @@ function getDurationDays(sheet: RouteSheetDto): number {
   padding: 1rem 0;
 }
 
-.list-header {
+.toolbar {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1.5rem;
+  align-items: center;
+  margin-bottom: 1rem;
   gap: 1rem;
 }
 
-.header-info h3 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--app-text);
-}
-
-.subtitle {
-  margin: 0;
-  color: #64748b;
-  font-size: 0.9375rem;
-}
-
-.filters-bar {
+.filters {
   display: flex;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  padding: 1rem;
-  background: #f8fafc;
-  border-radius: 8px;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
-.filter-group {
+.filter-dropdown {
+  min-width: 180px;
+}
+
+.toolbar-actions {
   display: flex;
-  flex-direction: column;
   gap: 0.5rem;
-  min-width: 200px;
-}
-
-.filter-group label {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--app-text);
 }
 
 .loading-state,
@@ -683,94 +788,66 @@ function getDurationDays(sheet: RouteSheetDto): number {
   color: #991b1b;
 }
 
-.route-sheets-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-  gap: 1.5rem;
-}
-
-.route-sheet-card {
+.table-wrapper {
   background: white;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  padding: 1.5rem;
-  transition: all 0.2s;
+  padding: 0.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
 }
 
-.route-sheet-card:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
+.route-sheet-table :deep(.p-datatable-thead > tr > th) {
+  background: #0f172a;
+  color: white;
+  font-weight: 700;
+  border: none;
 }
 
-.card-header {
-  margin-bottom: 1.25rem;
+.route-sheet-table :deep(.p-datatable-tbody > tr > td) {
+  border: none;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: middle;
 }
 
-.card-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-}
-
-.card-title h4 {
-  margin: 0;
-  font-size: 1.125rem;
+.name-cell .name {
   font-weight: 700;
   color: var(--app-text);
 }
 
-.card-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.meta-item {
+.name-cell .meta {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #64748b;
-  font-size: 0.875rem;
+  margin-top: 0.25rem;
 }
 
-.meta-item i {
-  color: #3b82f6;
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.5rem;
+  background: #eef2ff;
+  color: #312e81;
+  border-radius: 6px;
+  font-size: 0.85rem;
 }
 
-.card-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  padding: 1rem;
-  background: #f8fafc;
-  border-radius: 8px;
-  margin-bottom: 1rem;
+.period {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #1e293b;
 }
 
-.stat-item {
-  text-align: center;
-}
-
-.stat-value {
-  font-size: 1.5rem;
+.strong {
   font-weight: 700;
-  color: #3b82f6;
-  margin-bottom: 0.25rem;
+  color: #0f172a;
 }
 
-.stat-label {
-  font-size: 0.8125rem;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.card-actions {
+.row-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.35rem;
 }
 
 .btn-primary,
@@ -987,13 +1064,15 @@ function getDurationDays(sheet: RouteSheetDto): number {
   font-size: 0.8125rem;
   color: #64748b;
   font-weight: 700;
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
 }
 
 .route-label {
   font-size: 0.875rem;
   color: #1e293b;
   font-weight: 600;
+  white-space: pre-line;
+  line-height: 1.4;
 }
 
 .rest-row {
@@ -1039,10 +1118,6 @@ function getDurationDays(sheet: RouteSheetDto): number {
 }
 
 @media (max-width: 768px) {
-  .route-sheets-grid {
-    grid-template-columns: 1fr;
-  }
-
   .filters-bar {
     flex-direction: column;
   }

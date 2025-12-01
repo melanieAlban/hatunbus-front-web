@@ -16,7 +16,7 @@
             <span>Ver Hojas de Ruta</span>
           </div>
         </template>
-        <RouteSheetList />
+        <RouteSheetList ref="routeSheetListRef" />
       </TabPanel>
 
       <!-- Tab 2: Crear Hoja de Ruta -->
@@ -211,6 +211,7 @@ import FrequencySelectionModal from '../components/FrequencySelectionModal.vue'
 const auth = useAuthStore()
 const wizardStore = useRouteWizardStore()
 const frequencyStore = useFrequencyStore()
+const routeSheetListRef = ref<InstanceType<typeof RouteSheetList> | null>(null)
 
 const busGroups = ref<BusGroupDto[]>([])
 const availableFrequencies = computed(() => frequencyStore.availableFrequencies)
@@ -292,6 +293,9 @@ async function generateRouteSheet() {
 
     // Limpiar wizard
     resetAll()
+
+    // Refrescar listado sin requerir click manual
+    await routeSheetListRef.value?.reload?.()
   } catch (err: any) {
     console.error('[RouteSheetView] Error generando hoja:', err)
     notifyError('Error', err?.response?.data?.message || 'No se pudo generar la hoja de ruta')

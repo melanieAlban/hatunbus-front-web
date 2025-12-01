@@ -1,6 +1,6 @@
 <template>
   <div class="frequencies-tab">
-    <div class="frequencies-toolbar">
+    <div class="toolbar">
       <div class="filters">
         <Dropdown
           v-model="selectedRouteFilter"
@@ -31,6 +31,7 @@
           label="Refrescar"
           @click="loadFrequencies"
           :loading="loading"
+          class="p-button-text"
         />
         <Button
           icon="pi pi-plus"
@@ -55,7 +56,7 @@
       <i class="pi pi-calendar-times"></i>
       <p>No se encontraron frecuencias.</p>
     </div>
-    <div v-else>
+    <div v-else class="table-wrapper">
       <DataTable
         :value="filteredFrequencies"
         data-key="id"
@@ -68,7 +69,7 @@
         <Column header="Ruta" :sortable="true">
           <template #body="{ data }">
             <div class="route-info">
-              <span>{{ data.origin || '—' }} → {{ data.destination || '—' }}</span>
+              <span>{{ data.origin || '-' }} → {{ data.destination || '-' }}</span>
             </div>
           </template>
         </Column>
@@ -84,7 +85,7 @@
         </Column>
         <Column header="Resolución ANT" field="regulatoryResolution" :sortable="true">
           <template #body="{ data }">
-            {{ data.regulatoryResolution || '—' }}
+            {{ data.regulatoryResolution || '-' }}
           </template>
         </Column>
         <Column header="Acciones" style="width: 180px;">
@@ -95,13 +96,6 @@
                 class="p-button-text"
                 @click="viewFrequencyDetails(data)"
                 v-tooltip.top="'Ver detalles'"
-              />
-              <Button
-                icon="pi pi-ban"
-                class="p-button-text p-button-warning"
-                v-if="data.active"
-                @click="confirmDeactivate(data)"
-                v-tooltip.top="'Desactivar'"
               />
               <Button
                 icon="pi pi-trash"
@@ -184,6 +178,9 @@ const statusFilter = ref<'all' | 'active' | 'inactive'>('all')
 const searchText = ref('')
 const detailsDialogVisible = ref(false)
 const selectedFrequency = ref<FrequencyDto | null>(null)
+const sanitizedFrequencies = computed(() =>
+  frequencies.value.map(stripCompositeSegments)
+)
 
 const statusOptions = [
   { label: 'Todas', value: 'all' },
@@ -193,7 +190,7 @@ const statusOptions = [
 
 const routeFilterOptions = computed(() => {
   const uniqueRoutes = new Set<string>()
-  frequencies.value.forEach(freq => {
+  sanitizedFrequencies.value.forEach(freq => {
     if (freq.origin && freq.destination) {
       uniqueRoutes.add(`${freq.origin} → ${freq.destination}`)
     }
@@ -205,7 +202,7 @@ const routeFilterOptions = computed(() => {
 })
 
 const filteredFrequencies = computed(() => {
-  let result = frequencies.value
+  let result = sanitizedFrequencies.value
 
   // Filtro por estado
   if (statusFilter.value === 'active') {
@@ -252,25 +249,8 @@ async function loadFrequencies() {
 }
 
 function viewFrequencyDetails(frequency: FrequencyDto) {
-  selectedFrequency.value = frequency
+  selectedFrequency.value = stripCompositeSegments(frequency)
   detailsDialogVisible.value = true
-}
-
-async function confirmDeactivate(frequency: FrequencyDto) {
-  const confirmed = await confirm(
-    `¿Desactivar la frecuencia ${frequency.regulatoryResolution}?`,
-    'Confirmar desactivación'
-  )
-
-  if (!confirmed) return
-
-  try {
-    await deactivateFrequency(frequency.id)
-    success('Éxito', 'Frecuencia desactivada')
-    await loadFrequencies()
-  } catch (err: any) {
-    notifyError('Error', err.response?.data?.message || 'Error al desactivar')
-  }
 }
 
 async function confirmDelete(frequency: FrequencyDto) {
@@ -294,6 +274,17 @@ function createFrequency() {
   emit('createFrequency')
 }
 
+function stripCompositeSegments(freq: FrequencyDto): FrequencyDto {
+  return {
+    ...freq,
+    segments: (freq.segments || []).filter(segment => !isCompositeSegment(segment))
+  }
+}
+
+function isCompositeSegment(segment: { segmentOrder?: number }) {
+  return segment.segmentOrder !== undefined && segment.segmentOrder >= 900
+}
+
 watch(() => props.cooperativeId, (newId) => {
   if (newId) {
     loadFrequencies()
@@ -307,28 +298,15 @@ watch(() => props.cooperativeId, (newId) => {
 .frequencies-tab {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
-.frequencies-toolbar {
+.toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
   flex-wrap: wrap;
-  margin-bottom: 1.5rem;
-}
-
-.filters {
-  display: flex;
-  gap: 1rem;
-  flex: 1;
-  flex-wrap: wrap;
-}
-
-.toolbar-actions {
-  display: flex;
-  gap: 0.5rem;
 }
 
 .filter-dropdown {
@@ -338,6 +316,31 @@ watch(() => props.cooperativeId, (newId) => {
 .search-input {
   flex: 1;
   min-width: 250px;
+}
+
+.filters {
+  display: flex;
+  gap: 0.75rem;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.table-wrapper {
+  background: white;
+  border: 1px solid var(--surface-border, #e2e8f0);
+  border-radius: 12px;
+  padding: 0.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+.row-actions {
+  display: flex;
+  gap: 0.25rem;
 }
 
 .loading-state,
