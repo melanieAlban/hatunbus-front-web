@@ -9,6 +9,7 @@ export const routePermissions: PermissionMap = {
   AdminRoles: ['ADMIN'],
   AdminRoutesFrequencies: ['ADMIN', 'COOPERATIVE'],
   AdminRouteSheet: ['ADMIN', 'COOPERATIVE'],
+  AdminRouteSheetWizard: ['ADMIN', 'COOPERATIVE'],
   AdminReports: ['ADMIN', 'COOPERATIVE', 'CLERK'],
   AdminBuses: ['ADMIN', 'COOPERATIVE'],
   AdminDrivers: ['ADMIN', 'COOPERATIVE'],

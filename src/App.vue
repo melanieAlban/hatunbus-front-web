@@ -2,11 +2,13 @@
   <router-view />
   <Notifier />
   <Toast />
+  <ConfirmDialog />
 </template>
 
 <script setup>
 import Notifier from './components/ui/Notifier.vue'
 import Toast from 'primevue/toast'
+import ConfirmDialog from 'primevue/confirmdialog'
 </script>
 
 <style>

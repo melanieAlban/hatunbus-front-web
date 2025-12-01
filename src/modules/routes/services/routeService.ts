@@ -21,6 +21,11 @@ export async function listActiveRoutesByCooperative(cooperativeId: string): Prom
   return res.data as RouteDto[]
 }
 
+export async function listAllFrequenciesByCooperative(cooperativeId: string): Promise<FrequencyDto[]> {
+  const res = await apiClient.get(`${FREQUENCY_BASE}/cooperativa/${cooperativeId}`)
+  return res.data as FrequencyDto[]
+}
+
 export async function getFrequenciesByRoute(routeId: string): Promise<FrequencyDto[]> {
   const res = await apiClient.get(`${FREQUENCY_BASE}/ruta/${routeId}`)
   return res.data as FrequencyDto[]
@@ -65,6 +70,7 @@ export async function deactivateFrequency(id: string): Promise<void> {
 export default {
   listRoutesByCooperative,
   listActiveRoutesByCooperative,
+  listAllFrequenciesByCooperative,
   getFrequenciesByRoute,
   createRoute,
   updateRoute,

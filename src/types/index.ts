@@ -1,14 +1,15 @@
 export type Token = string
 
 export interface RouteSheetDto {
-  id: string
-  cooperativeId: string
-  cooperativeName?: string
-  startDate: string
-  endDate: string
-  status: string
-  createdAt?: string
-  updatedAt?: string
+  id: string;
+  cooperativeId: string;
+  cooperativeName?: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  createdAt?: string;
+  updatedAt?: string;
+  generatedTripsCount?: number;
 }
 
 export interface TripDto {

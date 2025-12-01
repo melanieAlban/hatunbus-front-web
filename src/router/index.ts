@@ -29,6 +29,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'roles', name: 'AdminRoles', component: () => import('../modules/admin/views/RolesView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminRoles') } },
       { path: 'routes-frequencies', name: 'AdminRoutesFrequencies', component: () => import('../modules/admin/views/RoutesFrequenciesView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminRoutesFrequencies') } },
       { path: 'route-sheet', name: 'AdminRouteSheet', component: () => import('../modules/admin/views/RouteSheetView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminRouteSheet') } },
+      { path: 'route-sheet-wizard', name: 'AdminRouteSheetWizard', component: () => import('../modules/admin/views/RouteSheetWizardView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminRouteSheetWizard') } },
       { path: 'reports', name: 'AdminReports', component: () => import('../modules/admin/views/ReportsView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminReports') } },
       { path: 'buses', name: 'AdminBuses', component: () => import('../modules/buses/views/BusesView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminBuses') } },
       { path: 'drivers', name: 'AdminDrivers', component: () => import('../modules/conductores/views/DriversView.vue'), meta: { requiresAuth: true, roles: getRouteRoles('AdminDrivers') } },
