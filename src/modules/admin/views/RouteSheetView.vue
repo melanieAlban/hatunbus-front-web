@@ -286,8 +286,9 @@ async function generateRouteSheet() {
       }))
     }
 
-    await generateForBusGroup(request)
-    success('Hoja de Ruta Generada', 'La hoja de ruta se creó exitosamente')
+    const response = await generateForBusGroup(request)
+    const count = response.generatedTripsCount || 0
+    success('Hoja de Ruta Generada', `La hoja de ruta se creó exitosamente. Se generaron ${count} viajes.`)
 
     // Limpiar wizard
     resetAll()
