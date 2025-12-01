@@ -7,39 +7,6 @@
           Administra las rutas de la cooperativa y define las frecuencias (segmentos) que las utilizan.
         </p>
       </div>
-      <div class="header-right">
-        <div class="selector">
-          <label>Cooperativa</label>
-          <Dropdown
-            v-model="selectedCooperativeId"
-            :options="cooperativeOptions"
-            optionLabel="name"
-            optionValue="id"
-            placeholder="Selecciona cooperativa"
-            :disabled="!canChangeCooperative"
-            :loading="cooperativeStore.loading"
-            :showClear="false"
-            class="coop-dropdown"
-          />
-        </div>
-        <div class="header-actions">
-          <Button
-            icon="pi pi-refresh"
-            label="Refrescar"
-            class="btn-refresh"
-            @click="refreshRoutes"
-            :disabled="!selectedCooperativeId || loadingRoutes"
-            :loading="loadingRoutes && !!selectedCooperativeId"
-          />
-          <Button
-            icon="pi pi-plus"
-            label="Nueva ruta"
-            class="p-button-success"
-            @click="openRouteDialog()"
-            :disabled="!selectedCooperativeId"
-          />
-        </div>
-      </div>
     </header>
 
     <div v-if="!selectedCooperativeId" class="warning-card">
@@ -53,29 +20,56 @@
     </div>
 
     <template v-else>
-      <div class="stats-grid">
-        <div class="stat-card">
-          <span class="stat-label">Total de rutas</span>
-          <strong class="stat-value">{{ routes.length }}</strong>
-        </div>
-        <div class="stat-card">
-          <span class="stat-label">Activas</span>
-          <strong class="stat-value success">{{ activeRoutes }}</strong>
-        </div>
-        <div class="stat-card">
-          <span class="stat-label">Inactivas</span>
-          <strong class="stat-value warning">{{ inactiveRoutes }}</strong>
-        </div>
-      </div>
-
-      <div class="content-grid">
-        <section class="routes-card">
-          <div class="card-header">
-            <div>
-              <h3>Listado de rutas</h3>
-              <small>Selecciona una ruta para ver o crear sus frecuencias.</small>
+      <TabView>
+        <TabPanel header="Frecuencias">
+          <FrequenciesTab
+            :cooperative-id="selectedCooperativeId"
+            @create-frequency="openFrequencyDialog()"
+          />
+        </TabPanel>
+        <TabPanel header="Rutas">
+          <div class="tab-header">
+            <div class="header-actions">
+              <Button
+                icon="pi pi-refresh"
+                label="Refrescar"
+                class="btn-refresh"
+                @click="refreshRoutes"
+                :disabled="!selectedCooperativeId || loadingRoutes"
+                :loading="loadingRoutes && !!selectedCooperativeId"
+              />
+              <Button
+                icon="pi pi-plus"
+                label="Nueva ruta"
+                class="p-button-success"
+                @click="openRouteDialog()"
+                :disabled="!selectedCooperativeId"
+              />
             </div>
           </div>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <span class="stat-label">Total de rutas</span>
+              <strong class="stat-value">{{ routes.length }}</strong>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Activas</span>
+              <strong class="stat-value success">{{ activeRoutes }}</strong>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Inactivas</span>
+              <strong class="stat-value warning">{{ inactiveRoutes }}</strong>
+            </div>
+          </div>
+
+          <div class="routes-section">
+            <div class="card-header">
+              <div>
+                <h3>Listado de rutas</h3>
+                <small>Gestiona las rutas de la cooperativa.</small>
+              </div>
+            </div>
           <div class="routes-toolbar">
             <InputText
               v-model="routeSearch"
@@ -136,16 +130,9 @@
                   <Tag :severity="data.active ? 'success' : 'danger'" :value="data.active ? 'Activa' : 'Inactiva'" />
                 </template>
               </Column>
-              <Column header="Acciones" style="width: 240px;">
+              <Column header="Acciones" style="width: 180px;">
                 <template #body="{ data }">
                   <div class="row-actions">
-                    <Button
-                      icon="pi pi-eye"
-                      class="p-button-text"
-                      :class="{ 'p-button-outlined': selectedRouteId !== data.id }"
-                      @click="selectRoute(data)"
-                      v-tooltip.top="'Ver frecuencias'"
-                    />
                     <Button
                       icon="pi pi-pencil"
                       class="p-button-text"
@@ -170,116 +157,9 @@
               </Column>
             </DataTable>
           </div>
-        </section>
-
-        <section class="frequencies-panel" ref="freqPanelRef">
-          <div v-if="!selectedRoute" class="panel-empty">
-            <i class="pi pi-route"></i>
-            <p>Selecciona una ruta del listado para gestionar sus frecuencias.</p>
-          </div>
-          <template v-else>
-            <div class="panel-header">
-              <div>
-                <h3>{{ selectedRoute.name }}</h3>
-                <p>{{ selectedRoute.origin }} → {{ selectedRoute.destination }}</p>
-              </div>
-              <div class="panel-actions">
-                <Button
-                  icon="pi pi-plus"
-                  label="Nueva frecuencia"
-                  class="p-button-success p-button-sm"
-                  @click="openFrequencyDialog()"
-                />
-                <Button
-                  icon="pi pi-refresh"
-                  class="p-button-rounded p-button-text"
-                  v-tooltip.top="'Actualizar frecuencias'"
-                  @click="loadFrequencies(selectedRoute.id, true)"
-                  :loading="isLoadingFrequencies"
-                />
-              </div>
-            </div>
-
-            <div class="route-meta">
-              <div>
-                <small>Distancia</small>
-                <strong>{{ formatDistance(selectedRoute.distanceKm) }}</strong>
-              </div>
-              <div>
-                <small>Tiempo estimado</small>
-                <strong>{{ formatDuration(selectedRoute.estimatedTime) }}</strong>
-              </div>
-              <div>
-                <small>Tarifa base</small>
-                <strong>{{ formatPrice(selectedRoute.basePrice) }}</strong>
-              </div>
-            </div>
-
-            <div class="panel-body">
-              <div v-if="isLoadingFrequencies" class="loading-state">
-                <Skeleton width="100%" height="120px" v-for="n in 2" :key="`freq-skeleton-${n}`" />
-              </div>
-              <div v-else-if="currentFrequenciesError" class="error-state">
-                <i class="pi pi-exclamation-triangle"></i>
-                <div>
-                  <p>{{ currentFrequenciesError }}</p>
-                  <Button
-                    label="Reintentar"
-                    icon="pi pi-refresh"
-                    class="p-button-text"
-                    @click="loadFrequencies(selectedRoute.id, true)"
-                  />
-                </div>
-              </div>
-              <div v-else-if="selectedRouteFrequencies.length === 0" class="empty-state">
-                <i class="pi pi-calendar-times"></i>
-                <p>No hay frecuencias configuradas para esta ruta.</p>
-              </div>
-              <div v-else class="frequencies-list">
-                <div v-for="freq in selectedRouteFrequencies" :key="freq.id" class="frequency-card">
-                  <div class="frequency-header">
-                    <div>
-                      <h4>Frecuencia {{ freq.regulatoryResolution || freq.id.slice(0, 8) }}</h4>
-                      <small>{{ freq.origin || '—' }} → {{ freq.destination || '—' }}</small>
-                    </div>
-                    <div class="frequency-actions">
-                      <Tag
-                        :severity="freq.active ? 'success' : 'danger'"
-                        :value="freq.active ? 'Activa' : 'Inactiva'"
-                      />
-                      <Button
-                        icon="pi pi-trash"
-                        class="p-button-text p-button-danger"
-                        v-tooltip.top="'Eliminar frecuencia'"
-                        @click="confirmDeleteFrequency(freq)"
-                      />
-                    </div>
-                  </div>
-                  <Divider />
-                  <div class="segments-list">
-                    <div
-                      v-for="segment in freq.segments"
-                      :key="segment.id"
-                      class="segment-item"
-                      :class="{ highlight: segment.routeId === selectedRoute.id }"
-                    >
-                      <div class="segment-route">
-                        <i class="pi pi-map-marker"></i>
-                        <span>{{ segment.routeOrigin }} → {{ segment.routeDestination }}</span>
-                      </div>
-                      <div class="segment-meta">
-                        <span><i class="pi pi-clock"></i> {{ formatTime(segment.departureTime) }}</span>
-                        <span><i class="pi pi-hourglass"></i> {{ formatDuration(segment.estimatedDuration) }}</span>
-                        <span><i class="pi pi-sort-numeric-up"></i> Orden {{ segment.segmentOrder }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </template>
-        </section>
-      </div>
+        </div>
+        </TabPanel>
+      </TabView>
     </template>
 
     <!-- Route dialog -->
@@ -415,20 +295,22 @@
               <label>Ruta *</label>
               <Dropdown
                 v-model="segment.routeId"
-                :options="routeOptions"
+                :options="getAvailableRoutesForSegment(index)"
                 optionLabel="label"
                 optionValue="value"
                 placeholder="Selecciona ruta"
                 filter
+                @change="onSegmentRouteChange(index)"
               />
             </div>
             <div class="segment-field">
               <label>Hora salida *</label>
-              <input v-model="segment.departureTime" type="time" class="time-input" />
-            </div>
-            <div class="segment-field small">
-              <label>Duración (min) *</label>
-              <InputNumber v-model="segment.estimatedDuration" :min="1" :useGrouping="false" />
+              <Calendar
+                v-model="segment.departureTime"
+                timeOnly
+                hourFormat="24"
+                placeholder="HH:MM"
+              />
             </div>
             <div class="segment-actions">
               <Button
@@ -475,13 +357,17 @@ import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Skeleton from 'primevue/skeleton'
-import Divider from 'primevue/divider'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
 import Checkbox from 'primevue/checkbox'
+import Calendar from 'primevue/calendar'
+import TabView from 'primevue/tabview'
+import TabPanel from 'primevue/tabpanel'
+import FrequenciesTab from '../components/FrequenciesTab.vue'
 import { useAuthStore } from '../../auth/store/useAuthStore'
+import { useFrequencyStore } from '../../cooperatives/store/useFrequencyStore'
 import { useCooperativeStore } from '../../cooperatives/store/useCooperativeStore'
 import type { RouteDto, FrequencyDto } from '../../routes/interfaces/route.interface'
 import {
@@ -505,12 +391,12 @@ type FrequencyDialogMode = 'create' | 'edit'
 
 interface FrequencySegmentForm {
   routeId: string
-  departureTime: string
-  estimatedDuration: number | null
+  departureTime: Date | null
 }
 
 const auth = useAuthStore()
 const cooperativeStore = useCooperativeStore()
+const frequencyStore = useFrequencyStore()
 
 const routes = ref<RouteDto[]>([])
 const loadingRoutes = ref(false)
@@ -692,7 +578,7 @@ const filteredRoutes = computed(() => {
 
 const routeOptions = computed(() =>
   routes.value.map((route) => ({
-    label: `${route.name} (${route.origin} → ${route.destination})`,
+    label: `${route.origin} → ${route.destination}`,
     value: route.id,
   }))
 )
@@ -900,10 +786,12 @@ function openFrequencyDialog(frequency?: FrequencyDto) {
 }
 
 function addSegment() {
+  const now = new Date()
+  now.setHours(6, 0, 0, 0)
+
   frequencyForm.segments.push({
-    routeId: selectedRouteId.value || '',
-    departureTime: '06:00',
-    estimatedDuration: 60,
+    routeId: '',
+    departureTime: now,
   })
 }
 
@@ -922,6 +810,43 @@ function moveSegment(index: number, direction: 1 | -1) {
   frequencyForm.segments[target] = current
 }
 
+function getAvailableRoutesForSegment(index: number) {
+  // Primer segmento: todas las rutas disponibles
+  if (index === 0) {
+    return routeOptions.value
+  }
+
+  // Segmentos subsecuentes: filtrar por conectividad
+  const previousSegment = frequencyForm.segments[index - 1]
+  if (!previousSegment?.routeId) {
+    return []
+  }
+
+  const previousRoute = routes.value.find((r) => r.id === previousSegment.routeId)
+  if (!previousRoute) {
+    return []
+  }
+
+  // Filtrar rutas que empiecen donde termina la anterior
+  const availableRoutes = routes.value.filter(
+    (route) => route.origin === previousRoute.destination
+  )
+
+  return availableRoutes.map((route) => ({
+    label: `${route.origin} → ${route.destination}`,
+    value: route.id,
+  }))
+}
+
+function onSegmentRouteChange(index: number) {
+  // Limpiar los segmentos siguientes cuando se cambia una ruta
+  if (index < frequencyForm.segments.length - 1) {
+    for (let i = index + 1; i < frequencyForm.segments.length; i++) {
+      frequencyForm.segments[i].routeId = ''
+    }
+  }
+}
+
 function validateFrequencyForm() {
   let isValid = true
   frequencyErrors.regulatoryResolution = frequencyForm.regulatoryResolution.trim()
@@ -932,14 +857,10 @@ function validateFrequencyForm() {
     isValid = false
   } else {
     const invalidSegment = frequencyForm.segments.find(
-      (segment) =>
-        !segment.routeId ||
-        !segment.departureTime ||
-        segment.estimatedDuration === null ||
-        segment.estimatedDuration <= 0,
+      (segment) => !segment.routeId || !segment.departureTime
     )
     frequencyErrors.segments = invalidSegment
-      ? 'Todos los segmentos deben tener ruta, hora y duración válida'
+      ? 'Todos los segmentos deben tener ruta y hora de salida'
       : null
     if (invalidSegment) isValid = false
   }
@@ -947,12 +868,25 @@ function validateFrequencyForm() {
 }
 
 function buildFrequencySegmentPayload() {
-  return frequencyForm.segments.map((segment, index) => ({
-    routeId: segment.routeId,
-    departureTime: segment.departureTime.length === 5 ? `${segment.departureTime}:00` : segment.departureTime,
-    estimatedDuration: Number(segment.estimatedDuration),
-    segmentOrder: index + 1,
-  }))
+  return frequencyForm.segments.map((segment, index) => {
+    const route = routes.value.find((r) => r.id === segment.routeId)
+    const estimatedDuration = route?.estimatedTime || 60
+
+    // Convertir Date a string "HH:mm:ss"
+    let departureTimeStr = '06:00:00'
+    if (segment.departureTime instanceof Date) {
+      const hours = String(segment.departureTime.getHours()).padStart(2, '0')
+      const minutes = String(segment.departureTime.getMinutes()).padStart(2, '0')
+      departureTimeStr = `${hours}:${minutes}:00`
+    }
+
+    return {
+      routeId: segment.routeId,
+      departureTime: departureTimeStr,
+      estimatedDuration,
+      segmentOrder: index + 1,
+    }
+  })
 }
 
 async function submitFrequencyForm() {
@@ -983,6 +917,7 @@ async function submitFrequencyForm() {
     }
     frequencyDialogVisible.value = false
     await refreshFrequenciesForRoutes(segmentsPayload.map((segment) => segment.routeId))
+    await refreshAvailableFrequencies()
   } catch (error: any) {
     const message = error?.response?.data?.message || error?.message || 'No se pudo guardar la frecuencia'
     notifyError('Error', message)
@@ -1003,6 +938,7 @@ async function confirmDeleteFrequency(frequency: FrequencyDto) {
     await deleteFrequency(frequency.id)
     success('Frecuencia eliminada', frequency.regulatoryResolution || frequency.id)
     await refreshFrequenciesForRoutes(getRouteIdsFromFrequency(frequency))
+    await refreshAvailableFrequencies()
   } catch (error: any) {
     const message =
       error?.response?.data?.message || error?.message || 'No se pudo eliminar la frecuencia'
@@ -1022,6 +958,7 @@ async function confirmDeactivateFrequency(frequency: FrequencyDto) {
     await deactivateFrequency(frequency.id)
     success('Frecuencia desactivada', frequency.regulatoryResolution || frequency.id)
     await refreshFrequenciesForRoutes(getRouteIdsFromFrequency(frequency))
+    await refreshAvailableFrequencies()
   } catch (error: any) {
     const message =
       error?.response?.data?.message || error?.message || 'No se pudo desactivar la frecuencia'
@@ -1041,6 +978,15 @@ async function refreshFrequenciesForRoutes(routeIds: string[]) {
     await loadFrequencies(selectedRouteId.value, true)
   }
 }
+
+async function refreshAvailableFrequencies() {
+  if (!selectedCooperativeId.value) return
+  try {
+    await frequencyStore.fetchAvailable(selectedCooperativeId.value)
+  } catch (error) {
+    console.error('[RoutesFrequenciesView] No se pudieron refrescar las frecuencias disponibles', error)
+  }
+}
 </script>
 <style scoped>
 .routes-frequencies-view {
@@ -1055,6 +1001,7 @@ async function refreshFrequenciesForRoutes(routeIds: string[]) {
   justify-content: space-between;
   align-items: flex-start;
   gap: 1rem;
+  margin-bottom: 1rem;
 }
 
 .subtitle {
@@ -1063,12 +1010,15 @@ async function refreshFrequenciesForRoutes(routeIds: string[]) {
   font-size: 0.95rem;
 }
 
-.header-right {
+.tab-header {
   display: flex;
-  gap: 1rem;
-  align-items: flex-end;
-  flex-wrap: wrap;
   justify-content: flex-end;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--surface-border);
+  flex-wrap: wrap;
 }
 
 .header-actions {
