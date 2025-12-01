@@ -274,6 +274,10 @@ function createFrequency() {
   emit('createFrequency')
 }
 
+defineExpose({
+  reload: loadFrequencies,
+})
+
 function stripCompositeSegments(freq: FrequencyDto): FrequencyDto {
   return {
     ...freq,

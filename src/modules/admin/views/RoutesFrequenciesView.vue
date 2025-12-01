@@ -23,6 +23,7 @@
       <TabView>
         <TabPanel header="Frecuencias">
           <FrequenciesTab
+            ref="frequenciesTabRef"
             :cooperative-id="selectedCooperativeId"
             @create-frequency="openFrequencyDialog()"
           />
@@ -281,18 +282,6 @@
             </div>
             <div class="segment-actions">
               <Button
-                icon="pi pi-arrow-up"
-                class="p-button-text"
-                :disabled="index === 0"
-                @click="moveSegment(index, -1)"
-              />
-              <Button
-                icon="pi pi-arrow-down"
-                class="p-button-text"
-                :disabled="index === frequencyForm.segments.length - 1"
-                @click="moveSegment(index, 1)"
-              />
-              <Button
                 icon="pi pi-times"
                 class="p-button-text p-button-danger"
                 :disabled="frequencyForm.segments.length === 1"
@@ -343,11 +332,9 @@ import {
   createRoute,
   updateRoute,
   deleteRoute,
-  deactivateRoute,
   createFrequency,
   updateFrequency,
   deleteFrequency,
-  deactivateFrequency,
 } from '../../routes/services/routeService'
 import { confirm, error as notifyError, success } from '../../../lib/notifier'
 import type { CityDto } from '../../tickets/services/cityService'
@@ -359,11 +346,13 @@ type FrequencyDialogMode = 'create' | 'edit'
 interface FrequencySegmentForm {
   routeId: string
   departureTime: Date | null
+  estimatedDuration: number | null
 }
 
 const auth = useAuthStore()
 const cooperativeStore = useCooperativeStore()
 const frequencyStore = useFrequencyStore()
+const frequenciesTabRef = ref<InstanceType<typeof FrequenciesTab> | null>(null)
 
 const routes = ref<RouteDto[]>([])
 const loadingRoutes = ref(false)
@@ -692,30 +681,12 @@ async function confirmDeleteRoute(route: RouteDto) {
   }
 }
 
-async function confirmDeactivateRoute(route: RouteDto) {
-  const ok = await confirm({
-    title: 'Desactivar ruta',
-    message: `La ruta ${route.name} dejará de estar activa. ¿Deseas continuar?`,
-    acceptLabel: 'Desactivar',
-    rejectLabel: 'Cancelar',
-  })
-  if (!ok) return
-  try {
-    await deactivateRoute(route.id)
-    success('Ruta desactivada', route.name)
-    await refreshRoutes()
-  } catch (error: any) {
-    const message = error?.response?.data?.message || error?.message || 'No se pudo desactivar la ruta'
-    notifyError('Error', message)
-  }
-}
-
 function resetFrequencyForm() {
   frequencyForm.regulatoryResolution = ''
   frequencyForm.segments = [
     {
       routeId: selectedRouteId.value || '',
-      departureTime: '06:00',
+      departureTime: buildTimeDate(6, 0),
       estimatedDuration: 60,
     },
   ]
@@ -738,13 +709,13 @@ function openFrequencyDialog(frequency?: FrequencyDto) {
     frequencyForm.regulatoryResolution = frequency.regulatoryResolution || ''
     frequencyForm.segments = (frequency.segments || []).map((segment) => ({
       routeId: segment.routeId || '',
-      departureTime: formatTime(segment.departureTime).replace('—', '06:00'),
-      estimatedDuration: segment.estimatedDuration || 60,
+      departureTime: parseToDate(segment.departureTime) || buildTimeDate(6, 0),
+      estimatedDuration: segment.estimatedDuration || getRouteDuration(segment.routeId),
     }))
     if (frequencyForm.segments.length === 0) {
       frequencyForm.segments.push({
         routeId: selectedRouteId.value,
-        departureTime: '06:00',
+        departureTime: buildTimeDate(6, 0),
         estimatedDuration: 60,
       })
     }
@@ -759,22 +730,18 @@ function addSegment() {
   frequencyForm.segments.push({
     routeId: '',
     departureTime: now,
+    estimatedDuration: null,
   })
+
+  const newIndex = frequencyForm.segments.length - 1
+  if (newIndex > 0) {
+    autoSetDepartureFromPrevious(newIndex)
+  }
 }
 
 function removeSegment(index: number) {
   if (frequencyForm.segments.length === 1) return
   frequencyForm.segments.splice(index, 1)
-}
-
-function moveSegment(index: number, direction: 1 | -1) {
-  const target = index + direction
-  if (target < 0 || target >= frequencyForm.segments.length) return
-  const current = frequencyForm.segments[index]
-  const destination = frequencyForm.segments[target]
-  if (!current || !destination) return
-  frequencyForm.segments[index] = destination
-  frequencyForm.segments[target] = current
 }
 
 function getAvailableRoutesForSegment(index: number) {
@@ -810,7 +777,54 @@ function onSegmentRouteChange(index: number) {
   if (index < frequencyForm.segments.length - 1) {
     for (let i = index + 1; i < frequencyForm.segments.length; i++) {
       frequencyForm.segments[i].routeId = ''
+      frequencyForm.segments[i].departureTime = null
+      frequencyForm.segments[i].estimatedDuration = null
     }
+  }
+
+  autoSetDepartureFromPrevious(index)
+  updateFollowingDepartureTimes(index)
+}
+
+function buildTimeDate(hours: number, minutes: number) {
+  const d = new Date()
+  d.setHours(hours, minutes, 0, 0)
+  return d
+}
+
+function parseToDate(value: string | Date | null | undefined) {
+  if (!value) return null
+  if (value instanceof Date) return value
+  const parts = value.split(':')
+  const h = Number(parts[0] || 0)
+  const m = Number(parts[1] || 0)
+  return buildTimeDate(h, m)
+}
+
+function getRouteDuration(routeId: string | null | undefined) {
+  if (!routeId) return 60
+  const route = routes.value.find((r) => r.id === routeId)
+  return route?.estimatedTime || 60
+}
+
+function autoSetDepartureFromPrevious(index: number) {
+  if (index <= 0) return
+  const prev = frequencyForm.segments[index - 1]
+  if (!prev.routeId || !prev.departureTime) return
+
+  const prevTime = parseToDate(prev.departureTime)
+  if (!prevTime) return
+
+  const duration = prev.estimatedDuration || getRouteDuration(prev.routeId)
+  prev.estimatedDuration = duration
+
+  const nextTime = new Date(prevTime.getTime() + duration * 60000)
+  frequencyForm.segments[index].departureTime = nextTime
+}
+
+function updateFollowingDepartureTimes(startIndex: number) {
+  for (let i = startIndex + 1; i < frequencyForm.segments.length; i++) {
+    autoSetDepartureFromPrevious(i)
   }
 }
 
@@ -885,6 +899,7 @@ async function submitFrequencyForm() {
     frequencyDialogVisible.value = false
     await refreshFrequenciesForRoutes(segmentsPayload.map((segment) => segment.routeId))
     await refreshAvailableFrequencies()
+    await frequenciesTabRef.value?.reload?.()
   } catch (error: any) {
     const message = error?.response?.data?.message || error?.message || 'No se pudo guardar la frecuencia'
     notifyError('Error', message)
@@ -906,29 +921,10 @@ async function confirmDeleteFrequency(frequency: FrequencyDto) {
     success('Frecuencia eliminada', frequency.regulatoryResolution || frequency.id)
     await refreshFrequenciesForRoutes(getRouteIdsFromFrequency(frequency))
     await refreshAvailableFrequencies()
+    await frequenciesTabRef.value?.reload?.()
   } catch (error: any) {
     const message =
       error?.response?.data?.message || error?.message || 'No se pudo eliminar la frecuencia'
-    notifyError('Error', message)
-  }
-}
-
-async function confirmDeactivateFrequency(frequency: FrequencyDto) {
-  const ok = await confirm({
-    title: 'Desactivar frecuencia',
-    message: `La frecuencia ${frequency.regulatoryResolution || frequency.id} quedará inactiva. ¿Continuar?`,
-    acceptLabel: 'Desactivar',
-    rejectLabel: 'Cancelar',
-  })
-  if (!ok) return
-  try {
-    await deactivateFrequency(frequency.id)
-    success('Frecuencia desactivada', frequency.regulatoryResolution || frequency.id)
-    await refreshFrequenciesForRoutes(getRouteIdsFromFrequency(frequency))
-    await refreshAvailableFrequencies()
-  } catch (error: any) {
-    const message =
-      error?.response?.data?.message || error?.message || 'No se pudo desactivar la frecuencia'
     notifyError('Error', message)
   }
 }
