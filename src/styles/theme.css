@@ -1,0 +1,62 @@
+:root {
+  /* Light theme variables */
+  --earth-primary: #8B7355;
+  --earth-dark: #6B5B47;
+  --earth-darker: #5A4A3A;
+  --earth-light: #A0826D;
+  --earth-lighter: #C9A882;
+
+  --beige-bone: #FAF8F4;
+  --beige-light: #F5F1EB;
+  --beige-medium: #E8DFD5;
+  --beige-warm: #EDE8E0;
+
+  --black-soft: #1A1A1A;
+  --black-medium: #2C2C2C;
+  --black-soft-opacity: rgba(26,26,26,0.6);
+  --white-bone: #FFFFFF;
+  --white-warm: #FFFEFB;
+
+  --gray-earth: #9B8B7A;
+  --gray-earth-light: #B5A896;
+  --blue-primary: #2563EB;
+  --blue-light: #60A5FA;
+
+  --gray-light: #F5F5F5;
+  --gray-medium: #E5E5E5;
+  --gray-input: #D1D5DB;
+
+  /* App tokens */
+  --app-bg: var(--beige-bone);
+  --app-text: var(--earth-darker);
+  --app-accent: var(--earth-primary);
+  --app-input-bg: var(--white-bone);
+  --app-card-bg: var(--gray-light);
+}
+
+/* Utility classes that use the theme tokens */
+.btn-primary {
+  background-color: var(--app-accent);
+  color: var(--white-bone);
+  border: none;
+}
+
+.card {
+  background: var(--app-card-bg);
+  color: var(--app-text);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+input, textarea {
+  background: var(--app-input-bg);
+  border: 1px solid var(--gray-medium);
+  color: var(--app-text);
+  padding: 0.5rem;
+  border-radius: 6px;
+}
+
+/* Small helper for muted text */
+.muted {
+  color: var(--gray-earth);
+}
