@@ -27,7 +27,7 @@
                 optionValue="name"
                 placeholder="Seleccionar origen"
                 filter
-                class="w-full"
+                :class="['w-full', { 'p-invalid': searchErrors.origin }]"
                 :loading="loadingCities"
                 showClear
               >
@@ -38,6 +38,7 @@
                   </div>
                 </template>
               </Dropdown>
+            <small v-if="searchErrors.origin" class="field-error">{{ searchErrors.origin }}</small>
             </div>
 
             <!-- Bot√≥n Intercambiar -->
@@ -76,6 +77,7 @@
                   </div>
                 </template>
               </Dropdown>
+            <small v-if="searchErrors.destination" class="field-error">{{ searchErrors.destination }}</small>
             </div>
 
             <!-- Fecha -->
@@ -87,8 +89,9 @@
                 type="date"
                 v-model="searchDate"
                 :min="minDate"
-                class="date-input"
+                :class="['date-input', { invalid: searchErrors.date }]"
               />
+              <small v-if="searchErrors.date" class="field-error">{{ searchErrors.date }}</small>
             </div>
 
             <!-- Bot√≥n Buscar -->
@@ -326,8 +329,9 @@
                 <InputText
                   v-model="passengers[index]!.passengerName"
                   placeholder="Nombres y apellidos"
-                  class="w-full"
+                  :class="['w-full', { 'p-invalid': passengerErrors[index]?.passengerName }]"
                 />
+                <small v-if="passengerErrors[index]?.passengerName" class="field-error">{{ passengerErrors[index]?.passengerName }}</small>
               </div>
               <div class="form-field" v-if="passengers[index]">
                 <label class="field-label">
@@ -338,8 +342,9 @@
                   v-model="passengers[index]!.passengerIdCard"
                   placeholder="1234567890"
                   maxlength="10"
-                  class="w-full"
+                  :class="['w-full', { 'p-invalid': passengerErrors[index]?.passengerIdCard }]"
                 />
+                <small v-if="passengerErrors[index]?.passengerIdCard" class="field-error">{{ passengerErrors[index]?.passengerIdCard }}</small>
               </div>
               <div class="form-field" v-if="passengers[index]">
                 <label class="field-label">
@@ -352,8 +357,9 @@
                   optionLabel="label"
                   optionValue="value"
                   placeholder="Seleccionar tipo"
-                  class="w-full"
+                  :class="['w-full', { 'p-invalid': passengerErrors[index]?.passengerType }]"
                 />
+                <small v-if="passengerErrors[index]?.passengerType" class="field-error">{{ passengerErrors[index]?.passengerType }}</small>
               </div>
               <div class="form-field" v-if="passengers[index]">
                 <label class="field-label">
@@ -364,8 +370,9 @@
                   v-model="passengers[index]!.passengerEmail"
                   placeholder="correo@ejemplo.com"
                   type="email"
-                  class="w-full"
+                  :class="['w-full', { 'p-invalid': passengerErrors[index]?.passengerEmail }]"
                 />
+                <small v-if="passengerErrors[index]?.passengerEmail" class="field-error">{{ passengerErrors[index]?.passengerEmail }}</small>
               </div>
               <div class="form-field" v-if="passengers[index]">
                 <label class="field-label">
@@ -376,8 +383,9 @@
                   v-model="passengers[index]!.passengerPhone"
                   placeholder="0987654321"
                   maxlength="10"
-                  class="w-full"
+                  :class="['w-full', { 'p-invalid': passengerErrors[index]?.passengerPhone }]"
                 />
+                <small v-if="passengerErrors[index]?.passengerPhone" class="field-error">{{ passengerErrors[index]?.passengerPhone }}</small>
               </div>
             </div>
           </div>
@@ -473,7 +481,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, reactive } from 'vue'
 import Card from 'primevue/card'
 import Dropdown from 'primevue/dropdown'
 import InputNumber from 'primevue/inputnumber'
@@ -542,6 +550,24 @@ const searchDate = ref<string>((new Date().toISOString().split('T')[0]) || '')
 const loadingCities = ref(false)
 const searchPerformed = ref(false)
 
+watch(searchOrigin, () => {
+  searchErrors.origin = ''
+  if (searchDestination.value && searchDestination.value !== searchOrigin.value) {
+    searchErrors.destination = ''
+  }
+})
+
+watch(searchDestination, () => {
+  searchErrors.destination = ''
+  if (searchOrigin.value && searchOrigin.value !== searchDestination.value) {
+    searchErrors.origin = ''
+  }
+})
+
+watch(searchDate, () => {
+  searchErrors.date = ''
+})
+
 interface PassengerForm {
   passengerName: string
   passengerIdCard: string
@@ -551,6 +577,27 @@ interface PassengerForm {
 }
 
 const passengers = ref<PassengerForm[]>([])
+
+interface PassengerFieldErrors {
+  passengerName?: string
+  passengerIdCard?: string
+  passengerType?: string
+  passengerEmail?: string
+  passengerPhone?: string
+}
+
+const passengerErrors = ref<PassengerFieldErrors[]>([])
+const passengersValidated = ref(false)
+
+const searchErrors = reactive({
+  origin: '',
+  destination: '',
+  date: ''
+})
+
+const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+const phoneRegex = /^\+?\d{9,15}$/
+const cedulaRegex = /^\d{10}$/
 
 // Computed para obtener datos del store
 const cooperatives = computed(() => coopStore.items)
@@ -950,14 +997,47 @@ function swapCities() {
   searchDestination.value = temp
 }
 
-async function searchAvailableTrips() {
-  if (!searchOrigin.value || !searchDestination.value || !searchDate.value) {
-    notifyError('Por favor complete todos los campos de b√∫squeda')
-    return
+
+function validateSearchParams(): boolean {
+  let isValid = true
+  searchErrors.origin = ''
+  searchErrors.destination = ''
+  searchErrors.date = ''
+
+  if (!searchOrigin.value) {
+    searchErrors.origin = 'Selecciona la ciudad de origen'
+    isValid = false
   }
-  
-  if (searchOrigin.value === searchDestination.value) {
-    notifyError('El origen y destino no pueden ser iguales')
+
+  if (!searchDestination.value) {
+    searchErrors.destination = 'Selecciona la ciudad de destino'
+    isValid = false
+  }
+
+  if (searchOrigin.value && searchDestination.value && searchOrigin.value === searchDestination.value) {
+    searchErrors.destination = 'El destino debe ser distinto al origen'
+    searchErrors.origin = 'El origen debe ser distinto al destino'
+    isValid = false
+  }
+
+  if (!searchDate.value) {
+    searchErrors.date = 'Selecciona la fecha del viaje'
+    isValid = false
+  } else {
+    const selectedDate = new Date(searchDate.value)
+    const today = new Date(minDate.value)
+    if (selectedDate < today) {
+      searchErrors.date = 'La fecha no puede ser anterior a hoy'
+      isValid = false
+    }
+  }
+
+  return isValid
+}
+
+async function searchAvailableTrips() {
+  if (!validateSearchParams()) {
+    notifyError('Corrige los campos de busqueda antes de continuar')
     return
   }
   
@@ -1012,6 +1092,8 @@ async function selectTrip(trip: TripSummary) {
   selectedSeats.value = []
   seatAvailability.value = []
   passengers.value = []
+  passengerErrors.value = []
+  passengersValidated.value = false
   routeStops.value = []
   selectedRoute.value = null
   
@@ -1133,7 +1215,45 @@ watch(selectedSeats, (newSeats, oldSeats) => {
     console.log('Pasajeros eliminados. Total ahora:', passengers.value.length)
   }
   console.log('=============================')
+  syncPassengerErrorsWithPassengers()
 }, { deep: true })
+
+function syncPassengerErrorsWithPassengers() {
+  const diff = passengers.value.length - passengerErrors.value.length
+  if (diff > 0) {
+    for (let i = 0; i < diff; i++) {
+      passengerErrors.value.push({})
+    }
+  } else if (diff < 0) {
+    passengerErrors.value = passengerErrors.value.slice(0, passengers.value.length)
+  }
+}
+
+watch(passengers, () => {
+  syncPassengerErrorsWithPassengers()
+  if (passengersValidated.value) {
+    validatePassengersSection()
+  }
+}, { deep: true })
+
+function isValidEcuadorianId(id: string): boolean {
+  if (!cedulaRegex.test(id)) return false
+  const province = parseInt(id.substring(0, 2), 10)
+  if (province < 1 || province > 24) return false
+  const digits = id.split('').map(Number)
+  const verifier = digits[9]
+  let sum = 0
+  for (let i = 0; i < 9; i++) {
+    let digit = digits[i]
+    if (i % 2 === 0) {
+      digit *= 2
+      if (digit > 9) digit -= 9
+    }
+    sum += digit
+  }
+  const calculatedVerifier = (10 - (sum % 10)) % 10
+  return verifier === calculatedVerifier
+}
 
 async function loadTripsForCooperative(cooperativeId: string) {
   loading.value = true
@@ -1177,6 +1297,8 @@ async function loadBusTemplateForTrip() {
 async function onTripChange() {
   selectedSeats.value = []
   passengers.value = []
+  passengerErrors.value = []
+  passengersValidated.value = false
   seatAvailability.value = []
 
   if (!selectedTrip.value) return
@@ -1344,6 +1466,54 @@ watch(
   { deep: true, immediate: true }
 )
 
+function validatePassengersSection(): boolean {
+  if (!passengers.value.length) {
+    passengerErrors.value = []
+  passengersValidated.value = false
+    return true
+  }
+
+  passengerErrors.value = passengers.value.map(() => ({}))
+  let isValid = true
+
+  passengers.value.forEach((passenger, index) => {
+    const errorsForPassenger: PassengerFieldErrors = {}
+    if (!passenger || !passenger.passengerName?.trim()) {
+      errorsForPassenger.passengerName = 'El nombre es obligatorio'
+    }
+
+    const idCard = passenger?.passengerIdCard?.trim() || ''
+    if (!idCard) {
+      errorsForPassenger.passengerIdCard = 'La cÈdula es obligatoria'
+    } else if (!cedulaRegex.test(idCard)) {
+      errorsForPassenger.passengerIdCard = 'La cÈdula debe tener 10 dÌgitos'
+    } else if (!isValidEcuadorianId(idCard)) {
+      errorsForPassenger.passengerIdCard = 'La cÈdula ecuatoriana no es v·lida'
+    }
+
+    if (!passenger?.passengerType) {
+      errorsForPassenger.passengerType = 'Selecciona el tipo de pasajero'
+    }
+
+    const email = passenger?.passengerEmail?.trim()
+    if (email && !emailRegex.test(email)) {
+      errorsForPassenger.passengerEmail = 'Email inv·lido'
+    }
+
+    const phone = passenger?.passengerPhone?.trim()
+    if (phone && !phoneRegex.test(phone)) {
+      errorsForPassenger.passengerPhone = 'TelÈfono inv·lido'
+    }
+
+    if (Object.keys(errorsForPassenger).length > 0) {
+      isValid = false
+    }
+    passengerErrors.value[index] = errorsForPassenger
+  })
+
+  return isValid
+}
+
 function validateForm(): boolean {
   if (!selectedTrip.value) {
     notifyError('Debe seleccionar un viaje')
@@ -1355,20 +1525,15 @@ function validateForm(): boolean {
     return false
   }
   
-  for (let i = 0; i < passengers.value.length; i++) {
-    const p = passengers.value[i]
-    if (!p) {
-      notifyError(`Informaci√≥n del pasajero ${i + 1} incompleta`)
-      return false
-    }
-    if (!p.passengerName.trim()) {
-      notifyError(`El nombre del pasajero ${i + 1} es obligatorio`)
-      return false
-    }
-    if (!p.passengerIdCard.trim() || p.passengerIdCard.length !== 10) {
-      notifyError(`La c√©dula del pasajero ${i + 1} debe tener 10 d√≠gitos`)
-      return false
-    }
+  passengersValidated.value = true
+  if (!validatePassengersSection()) {
+    notifyError('Corrige los datos de los pasajeros antes de continuar')
+    return false
+  }
+
+  if (!paymentMethod.value) {
+    notifyError('Selecciona un metodo de pago')
+    return false
   }
   
   return true
@@ -1527,6 +1692,7 @@ function resetForm() {
   passengerCount.value = 1
   selectedSeats.value = []
   passengers.value = []
+  passengerErrors.value = []
   paymentMethod.value = 'CASH'
   seatAvailability.value = []
   completedPurchase.value = null
@@ -1614,6 +1780,12 @@ function handleNewSale() {
   align-items: center;
   gap: 0.5rem;
 }
+
+.field-error {
+  color: #d32f2f;
+  font-size: 0.85rem;
+}
+
 
 .field-label i {
   color: var(--primary-color);
@@ -2482,6 +2654,11 @@ function handleNewSale() {
   font-size: 1rem;
   font-family: inherit;
   transition: all 0.3s ease;
+}
+
+.date-input.invalid {
+  border-color: #d32f2f;
+  box-shadow: 0 0 0 1px rgba(211, 47, 47, 0.15);
 }
 
 .date-input:focus {

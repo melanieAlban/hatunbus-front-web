@@ -77,12 +77,16 @@
                 <label>Color Secundario</label>
                 <ColorPicker v-model="form.secondaryColor" :inline="false" />
               </div>
-            </div>
-            <div class="color-sample">
-              <div class="sample" :style="{ background: form.primaryColor || '#1976d2' }">Primario</div>
-              <div class="sample" :style="{ background: form.secondaryColor || '#f5f5f5', color:'#222' }">Secundario</div>
-            </div>
           </div>
+          <div class="color-sample">
+            <div class="sample" :style="{ background: form.primaryColor || '#1976d2' }">Primario</div>
+            <div class="sample" :style="{ background: form.secondaryColor || '#f5f5f5', color:'#222' }">Secundario</div>
+          </div>
+          <div class="color-errors">
+            <small class="field-error" v-if="errors.primaryColor">{{ errors.primaryColor }}</small>
+            <small class="field-error" v-if="errors.secondaryColor">{{ errors.secondaryColor }}</small>
+          </div>
+        </div>
         </div>
       </div>
 
@@ -153,6 +157,10 @@ const form = reactive<CreateCooperativePayload>({
 
 const errors = reactive<Record<string, string | null>>({})
 
+const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+const hexColorRegex = /^#([A-Fa-f0-9]{6})$/
+const phoneRegex = /^\+?\d{9,15}$/
+
 const submitLabel = computed(() => (props.model ? 'Guardar cambios' : 'Crear Cooperativa'))
 
 // debug: observe changes to active while editing
@@ -160,16 +168,95 @@ watch(() => form.active, v => {
   console.log('[CooperativeForm] form.active changed ->', v)
 })
 
+function sanitizePhoneValue(value: string): string {
+  if (!value) return ''
+  let sanitized = value.replace(/[^\d+]/g, '')
+  if (sanitized.startsWith('+')) {
+    sanitized = '+' + sanitized.slice(1).replace(/\D/g, '')
+  } else {
+    sanitized = sanitized.replace(/\D/g, '')
+  }
+  return sanitized.slice(0, 16)
+}
+
+function sanitizeRuc(value: string): string {
+  return (value || '').replace(/\D/g, '').slice(0, 13)
+}
+
+function isValidRuc(ruc: string): boolean {
+  if (!/^\d{13}$/.test(ruc)) return false
+  const province = Number(ruc.substring(0, 2))
+  if (province < 1 || province > 24) return false
+  const thirdDigit = Number(ruc.charAt(2))
+  if (thirdDigit === 7 || thirdDigit === 8) return false
+  const establishment = Number(ruc.substring(10))
+  if (establishment < 1) return false
+  return true
+}
+
+watch(() => form.ruc, (value) => {
+  if (typeof value !== 'string') return
+  const sanitized = sanitizeRuc(value)
+  if (sanitized !== value) {
+    form.ruc = sanitized
+  }
+})
+
+watch(() => form.phone, (value) => {
+  if (typeof value !== 'string') return
+  const sanitized = sanitizePhoneValue(value)
+  if (sanitized !== value) {
+    form.phone = sanitized
+  }
+})
+
 function validate(): boolean {
-  errors.name = !form.name ? 'El nombre es obligatorio' : null
-  errors.email = !form.email ? 'El email es obligatorio' : (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email) ? 'Email inválido' : null)
-  errors.ruc = !form.ruc ? 'El RUC es obligatorio' : (form.ruc.toString().length !== 13 ? 'El RUC debe tener 13 caracteres' : null)
-  errors.address = !form.address ? 'La dirección es obligatoria' : null
-  errors.phone = !form.phone ? 'El teléfono es obligatorio' : null
-  if (form.primaryColor && !/^#([A-Fa-f0-9]{6})$/.test(form.primaryColor)) errors.primaryColor = 'Formato de color inválido'
-  else errors.primaryColor = null
-  if (form.secondaryColor && !/^#([A-Fa-f0-9]{6})$/.test(form.secondaryColor)) errors.secondaryColor = 'Formato de color inválido'
-  else errors.secondaryColor = null
+  const trimmedName = form.name?.trim() || ''
+  const trimmedEmail = form.email?.trim() || ''
+  const trimmedAddress = form.address?.trim() || ''
+  const trimmedRuc = form.ruc?.trim() || ''
+  const trimmedPhone = form.phone?.trim() || ''
+
+  errors.name = !trimmedName
+    ? 'El nombre es obligatorio'
+    : (trimmedName.length < 3 ? 'El nombre debe tener al menos 3 caracteres' : null)
+
+  errors.email = !trimmedEmail
+    ? 'El email es obligatorio'
+    : (!emailRegex.test(trimmedEmail) ? 'Email invalido' : null)
+
+  if (!trimmedRuc) {
+    errors.ruc = 'El RUC es obligatorio'
+  } else if (!/^\d{13}$/.test(trimmedRuc)) {
+    errors.ruc = 'El RUC debe contener 13 digitos'
+  } else if (!isValidRuc(trimmedRuc)) {
+    errors.ruc = 'El RUC no cumple con el formato ecuatoriano'
+  } else {
+    errors.ruc = null
+  }
+
+  if (!trimmedAddress) {
+    errors.address = 'La direccion es obligatoria'
+  } else if (trimmedAddress.length < 5) {
+    errors.address = 'La direccion debe tener al menos 5 caracteres'
+  } else {
+    errors.address = null
+  }
+
+  if (!trimmedPhone) {
+    errors.phone = 'El telefono es obligatorio'
+  } else if (!phoneRegex.test(trimmedPhone)) {
+    errors.phone = 'Formato de telefono invalido (+593987654321)'
+  } else {
+    errors.phone = null
+  }
+
+  errors.primaryColor = form.primaryColor && !hexColorRegex.test(form.primaryColor)
+    ? 'Formato de color invalido (#RRGGBB)'
+    : null
+  errors.secondaryColor = form.secondaryColor && !hexColorRegex.test(form.secondaryColor)
+    ? 'Formato de color invalido (#RRGGBB)'
+    : null
 
   return Object.values(errors).every(v => v === null)
 }
@@ -307,6 +394,7 @@ watch(() => props.model, (m) => {
 .color-item label { display:block; font-size:0.85rem; margin-bottom:0.25rem }
 .color-sample { display:flex; gap:0.5rem; margin-top:0.6rem }
 .sample { padding:0.4rem 0.6rem; border-radius:6px; color:white; font-weight:600 }
+.color-errors { display:flex; flex-direction:column; gap:0.15rem; margin-top:0.35rem }
 .form-actions { display:flex; justify-content:flex-end; gap:0.6rem }
 .p-button-primary { background:var(--app-accent) !important; color:white !important }
 .p-button-secondary { background:transparent !important; border:1px solid var(--gray-light) !important }
