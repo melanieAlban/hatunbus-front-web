@@ -66,10 +66,12 @@
             <label class="p-label">Email</label>
             <InputText 
               v-model="modelLocal.email" 
+              :class="{ 'p-invalid': errors.email }" 
               maxlength="150" 
               placeholder="usuario@ejemplo.com"
               class="w-full"
             />
+            <small v-if="errors.email" class="p-error">{{ errors.email }}</small>
           </div>
         </div>
 
@@ -79,10 +81,12 @@
             <label class="p-label">Teléfono</label>
             <InputText 
               v-model="modelLocal.phone" 
-              maxlength="15" 
+              :class="{ 'p-invalid': errors.phone }" 
+              maxlength="16" 
               placeholder="Ingrese el teléfono"
               class="w-full"
             />
+            <small v-if="errors.phone" class="p-error">{{ errors.phone }}</small>
           </div>
 
           <div class="form-group">
@@ -469,6 +473,58 @@ const modelLocal = reactive<any>({
 })
 
 const errors = reactive<any>({})
+const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+const phoneRegex = /^\+?\d{9,15}$/
+
+function sanitizeDigits(value: string, maxLength?: number) {
+  const digits = (value || '').replace(/\D/g, '')
+  return typeof maxLength === 'number' ? digits.slice(0, maxLength) : digits
+}
+
+function sanitizePhoneValue(value: string): string {
+  if (!value) return ''
+  let normalized = value.replace(/[^\d+]/g, '')
+  if (normalized.startsWith('+')) {
+    normalized = '+' + normalized.slice(1).replace(/\D/g, '')
+  } else {
+    normalized = normalized.replace(/\D/g, '')
+  }
+  return normalized.slice(0, 16)
+}
+
+function isValidEcuadorianId(id: string): boolean {
+  if (!/^\d{10}$/.test(id)) return false
+  const province = parseInt(id.substring(0, 2), 10)
+  if (province < 1 || province > 24) return false
+  const digits = id.split('').map(Number)
+  const verifier = digits[9]
+  let sum = 0
+  for (let i = 0; i < 9; i++) {
+    let digit = digits[i]
+    if (i % 2 === 0) {
+      digit *= 2
+      if (digit > 9) digit -= 9
+    }
+    sum += digit
+  }
+  return (10 - (sum % 10)) % 10 === verifier
+}
+
+watch(() => modelLocal.idCard, (value) => {
+  if (typeof value !== 'string') return
+  const sanitized = sanitizeDigits(value, 10)
+  if (sanitized !== value) {
+    modelLocal.idCard = sanitized
+  }
+})
+
+watch(() => modelLocal.phone, (value) => {
+  if (typeof value !== 'string') return
+  const sanitized = sanitizePhoneValue(value)
+  if (sanitized !== value) {
+    modelLocal.phone = sanitized
+  }
+})
 
 // Generar contraseña automática de 8 caracteres
 function generatePassword() {
@@ -629,15 +685,39 @@ function validate(): boolean {
   }
 
   // ID Card validation
-  if (!modelLocal.idCard?.trim()) {
-    errors.idCard = 'La cédula es obligatoria'
+  const idCardValue = modelLocal.idCard?.trim() || ''
+  if (!idCardValue) {
+    errors.idCard = 'La cedula es obligatoria'
     isValid = false
-  } else if (modelLocal.idCard.length !== 10) {
-    errors.idCard = 'La cédula debe tener 10 dígitos'
+  } else if (!/^\d{10}$/.test(idCardValue)) {
+    errors.idCard = 'La cedula debe tener 10 digitos numericos'
+    isValid = false
+  } else if (!isValidEcuadorianId(idCardValue)) {
+    errors.idCard = 'La cedula ecuatoriana no es valida'
     isValid = false
   }
 
-  // Password validation (only for create)
+  // Email validation
+  const emailValue = typeof modelLocal.email === 'string' ? modelLocal.email.trim() : ''
+  if (!emailValue) {
+    errors.email = 'El email es obligatorio'
+    isValid = false
+  } else if (!emailRegex.test(emailValue)) {
+    errors.email = 'Formato de email invalido'
+    isValid = false
+  }
+
+  // Phone validation
+  const phoneValue = typeof modelLocal.phone === 'string' ? modelLocal.phone.trim() : ''
+  if (!phoneValue) {
+    errors.phone = 'El telefono es obligatorio'
+    isValid = false
+  } else if (!phoneRegex.test(phoneValue)) {
+    errors.phone = 'Formato de telefono invalido (+593999999999)'
+    isValid = false
+  }
+
+// Password validation (only for create)
   if (isCreate.value) {
     if (!modelLocal.password) {
       errors.password = 'La contraseña es obligatoria'
