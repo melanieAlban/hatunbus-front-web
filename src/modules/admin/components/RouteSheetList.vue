@@ -171,7 +171,10 @@
               :style="{ gridColumn: dateIdx + 3, gridRow: rowIdx + 2 }"
               :class="[getCellClass(row.cells[date]), { 'rest-cell': row.type === 'REST', 'deactivated-cell': row.deactivated }]"
             >
-                <div class="bus-numbers">
+                <div v-if="!row.cells[date]?.buses || row.cells[date]?.buses.length === 0" class="empty-cell-content">
+                  N/A
+                </div>
+                <div v-else class="bus-numbers">
                   <span
                     v-for="bus in row.cells[date]?.buses || []"
                     :key="bus"
@@ -1112,7 +1115,21 @@ function isCompositeSegment(detail: { segmentOrder?: number }) {
 }
 
 .cell-empty {
-  background: #fafafa;
+  background: repeating-linear-gradient(
+    45deg,
+    #f8f9fa,
+    #f8f9fa 10px,
+    #e9ecef 10px,
+    #e9ecef 20px
+  );
+}
+
+.empty-cell-content {
+  color: #6c757d;
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-align: center;
+  opacity: 0.7;
 }
 
 .rest-cell {

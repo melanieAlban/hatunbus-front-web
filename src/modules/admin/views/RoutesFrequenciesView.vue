@@ -255,6 +255,65 @@
           </div>
         </div>
 
+        <div class="form-grid">
+          <div class="form-field col-span">
+            <label>Días operativos *</label>
+            <div class="operating-days-section">
+              <div class="quick-actions">
+                <Button
+                  label="Todos"
+                  size="small"
+                  severity="secondary"
+                  outlined
+                  @click="selectAllDays"
+                  icon="pi pi-check-circle"
+                />
+                <Button
+                  label="Lun-Vie"
+                  size="small"
+                  severity="secondary"
+                  outlined
+                  @click="selectWeekdays"
+                  icon="pi pi-briefcase"
+                />
+                <Button
+                  label="Fin de semana"
+                  size="small"
+                  severity="secondary"
+                  outlined
+                  @click="selectWeekend"
+                  icon="pi pi-sun"
+                />
+                <Button
+                  label="Limpiar"
+                  size="small"
+                  severity="secondary"
+                  outlined
+                  @click="clearAllDays"
+                  icon="pi pi-times"
+                />
+              </div>
+              <div class="operating-days-selector">
+                <div
+                  v-for="day in weekDays"
+                  :key="day.value"
+                  :class="['day-item', frequencyForm.operatingDays.includes(day.value) ? 'day-item--active' : '']"
+                  @click="toggleOperatingDay(day.value)"
+                >
+                  <i :class="frequencyForm.operatingDays.includes(day.value) ? 'pi pi-check-circle' : 'pi pi-circle'"></i>
+                  <div class="day-info">
+                    <span class="day-label">{{ day.label }}</span>
+                    <span class="day-short">{{ day.short }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <small v-if="frequencyErrors.operatingDays" class="field-error">
+              {{ frequencyErrors.operatingDays }}
+            </small>
+          </div>
+        </div>
+
         <div class="segments-builder">
           <div class="segments-header">
             <h4>Segmentos</h4>
@@ -356,6 +415,16 @@ type FrequencyDialogMode = 'create' | 'edit'
 
 const confirmDialog = useConfirm()
 
+const weekDays = [
+  { label: 'Lunes', short: 'L', value: 'MONDAY' },
+  { label: 'Martes', short: 'M', value: 'TUESDAY' },
+  { label: 'Miércoles', short: 'X', value: 'WEDNESDAY' },
+  { label: 'Jueves', short: 'J', value: 'THURSDAY' },
+  { label: 'Viernes', short: 'V', value: 'FRIDAY' },
+  { label: 'Sábado', short: 'S', value: 'SATURDAY' },
+  { label: 'Domingo', short: 'D', value: 'SUNDAY' },
+]
+
 interface FrequencySegmentForm {
   routeId: string
   departureTime: Date | null
@@ -418,10 +487,16 @@ const editingFrequencyId = ref<string | null>(null)
 const frequencyForm = reactive({
   regulatoryResolution: '',
   segments: [] as FrequencySegmentForm[],
+  operatingDays: ['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY'] as string[],
 })
-const frequencyErrors = reactive<{ regulatoryResolution: string | null; segments: string | null }>({
+const frequencyErrors = reactive<{
+  regulatoryResolution: string | null
+  segments: string | null
+  operatingDays: string | null
+}>({
   regulatoryResolution: null,
   segments: null,
+  operatingDays: null,
 })
 const isSavingFrequency = ref(false)
 
@@ -738,8 +813,10 @@ function resetFrequencyForm() {
       estimatedDuration: 60,
     },
   ]
+  frequencyForm.operatingDays = ['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY']
   frequencyErrors.regulatoryResolution = null
   frequencyErrors.segments = null
+  frequencyErrors.operatingDays = null
   editingFrequencyId.value = null
 }
 
@@ -760,6 +837,10 @@ function openFrequencyDialog(frequency?: FrequencyDto) {
       departureTime: parseToDate(segment.departureTime) || buildTimeDate(6, 0),
       estimatedDuration: segment.estimatedDuration || getRouteDuration(segment.routeId),
     }))
+    frequencyForm.operatingDays =
+      (frequency as any).operatingDays && (frequency as any).operatingDays.length
+        ? [...(frequency as any).operatingDays]
+        : ['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY']
     if (frequencyForm.segments.length === 0) {
       frequencyForm.segments.push({
         routeId: selectedRouteId.value,
@@ -876,11 +957,40 @@ function updateFollowingDepartureTimes(startIndex: number) {
   }
 }
 
+function toggleOperatingDay(day: string) {
+  const idx = frequencyForm.operatingDays.indexOf(day)
+  if (idx >= 0) {
+    frequencyForm.operatingDays.splice(idx, 1)
+  } else {
+    frequencyForm.operatingDays.push(day)
+  }
+}
+
+function selectAllDays() {
+  frequencyForm.operatingDays = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']
+  frequencyErrors.operatingDays = null
+}
+
+function selectWeekdays() {
+  frequencyForm.operatingDays = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']
+  frequencyErrors.operatingDays = null
+}
+
+function selectWeekend() {
+  frequencyForm.operatingDays = ['SATURDAY', 'SUNDAY']
+  frequencyErrors.operatingDays = null
+}
+
+function clearAllDays() {
+  frequencyForm.operatingDays = []
+}
+
 function validateFrequencyForm() {
   let isValid = true
   frequencyErrors.regulatoryResolution = frequencyForm.regulatoryResolution.trim()
     ? null
     : 'La resolución es obligatoria'
+  frequencyErrors.operatingDays = frequencyForm.operatingDays.length ? null : 'Selecciona al menos un día'
   if (!frequencyForm.segments.length) {
     frequencyErrors.segments = 'Agrega al menos un segmento'
     isValid = false
@@ -930,6 +1040,7 @@ async function submitFrequencyForm() {
     cooperativeId: selectedCooperativeId.value,
     regulatoryResolution: frequencyForm.regulatoryResolution.trim(),
     segments: segmentsPayload,
+    operatingDays: frequencyForm.operatingDays,
   }
 
   try {
@@ -941,6 +1052,7 @@ async function submitFrequencyForm() {
       await updateFrequency(editingFrequencyId.value, {
         regulatoryResolution: payload.regulatoryResolution,
         segments: segmentsPayload,
+        operatingDays: frequencyForm.operatingDays,
       })
       success('Frecuencia actualizada', payload.regulatoryResolution)
     }
@@ -1417,6 +1529,89 @@ async function refreshAvailableFrequencies() {
 .field-error {
   color: #dc2626;
   font-size: 0.8rem;
+}
+
+.operating-days-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.quick-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.operating-days-selector {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.day-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border: 2px solid var(--surface-border, #e5e7eb);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--surface-0, #fff);
+}
+
+.day-item:hover {
+  border-color: #60a5fa;
+  background: #eff6ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.day-item--active {
+  border-color: #2563eb;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.day-item--active:hover {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  transform: translateY(-2px);
+}
+
+.day-item i {
+  font-size: 1.25rem;
+  color: var(--surface-400, #9ca3af);
+  transition: color 0.2s ease;
+}
+
+.day-item--active i {
+  color: #fff;
+}
+
+.day-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  flex: 1;
+}
+
+.day-label {
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.day-short {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.day-item--active .day-short {
+  opacity: 0.9;
 }
 
 .dialog-actions {

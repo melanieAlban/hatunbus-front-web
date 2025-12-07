@@ -193,6 +193,13 @@ async function handleVerifyChain() {
     await wizard.verifyChain(selectedFrequencyIds.value)
     if (wizard.isChainValid) {
       success('Cadena válida', 'El orden sugerido está listo para generar la matriz')
+    } else if (wizard.discardedFrequencies.length > 0) {
+      notifyError(
+        'Cadena incompleta', 
+        `${wizard.orderedChain.length} frecuencia(s) encadenadas, ${wizard.discardedFrequencies.length} excluidas por falta de conexión física. Revisa que el destino de cada frecuencia coincida con el origen de la siguiente.`
+      )
+    } else {
+      notifyError('Cadena inválida', 'Las frecuencias seleccionadas no se pueden encadenar')
     }
   } catch (err) {
     // Errores ya notificados desde store

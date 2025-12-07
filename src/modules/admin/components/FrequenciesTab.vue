@@ -78,6 +78,20 @@
             <Tag :value="`${data.segments?.length || 0} segmentos`" severity="info" />
           </template>
         </Column>
+        <Column header="Días operativos">
+          <template #body="{ data }">
+            <div class="operating-days">
+              <Tag
+                v-for="day in formatOperatingDays(data.operatingDays)"
+                :key="day"
+                :value="day"
+                severity="info"
+                class="day-tag"
+              />
+              <span v-if="!data.operatingDays || !data.operatingDays.length">-</span>
+            </div>
+          </template>
+        </Column>
         <Column header="Estado" field="active" :sortable="true">
           <template #body="{ data }">
             <Tag :severity="data.active ? 'success' : 'danger'" :value="data.active ? 'Activa' : 'Inactiva'" />
@@ -135,6 +149,19 @@
         <Divider />
         <div class="segments-list">
           <h5>Segmentos ({{ selectedFrequency.segments?.length || 0 }})</h5>
+          <div class="operating-days-detail">
+            <strong>Días operativos:</strong>
+            <span v-if="!selectedFrequency.operatingDays || !selectedFrequency.operatingDays.length">-</span>
+            <div v-else class="operating-days">
+              <Tag
+                v-for="day in formatOperatingDays(selectedFrequency.operatingDays)"
+                :key="day"
+                :value="day"
+                severity="info"
+                class="day-tag"
+              />
+            </div>
+          </div>
           <div
             v-for="segment in selectedFrequency.segments"
             :key="segment.id"
@@ -171,6 +198,16 @@ import { listAllFrequenciesByCooperative, deactivateFrequency, activateFrequency
 import type { FrequencyDto } from '@/modules/routes/interfaces/route.interface'
 import { confirm as notifyConfirm, success, error as notifyError } from '@/lib/notifier'
 
+const dayLabels: Record<string, string> = {
+  MONDAY: 'Lun',
+  TUESDAY: 'Mar',
+  WEDNESDAY: 'Mié',
+  THURSDAY: 'Jue',
+  FRIDAY: 'Vie',
+  SATURDAY: 'Sáb',
+  SUNDAY: 'Dom',
+}
+
 const props = defineProps<{
   cooperativeId: string | null
 }>()
@@ -191,6 +228,11 @@ const selectedFrequency = ref<FrequencyDto | null>(null)
 const sanitizedFrequencies = computed(() =>
   frequencies.value.map(stripCompositeSegments)
 )
+
+function formatOperatingDays(days?: string[]) {
+  if (!days || !days.length) return []
+  return days.map((d) => dayLabels[d] || d)
+}
 
 const statusOptions = [
   { label: 'Todas', value: 'all' },
@@ -450,6 +492,24 @@ watch(() => props.cooperativeId, (newId) => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.operating-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.operating-days-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.day-tag {
+  background: var(--surface-100, #f3f4f6);
+  color: var(--text-color, #111827);
 }
 
 .segments-list h5 {
