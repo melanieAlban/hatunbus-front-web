@@ -100,7 +100,6 @@ const form = reactive<CreateDriverPayload>({
 })
 
 const licenseTypeOptions = [
-  { label: 'Tipo C', value: 'C' },
   { label: 'Tipo D', value: 'D' },
   { label: 'Tipo E', value: 'E' }
 ]

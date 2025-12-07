@@ -4,7 +4,9 @@ import type { DriverDto, CreateDriverPayload, UpdateDriverPayload } from '../int
 const BASE = '/conductores'
 
 export async function listByCooperative(cooperativeId: string): Promise<DriverDto[]> {
+  console.log('[driverService] listByCooperative called with cooperativeId:', cooperativeId)
   const res = await apiClient.get(`${BASE}/cooperativa/${cooperativeId}`)
+  console.log('[driverService] listByCooperative response (first item):', res.data?.[0])
   return res.data as DriverDto[]
 }
 
@@ -14,7 +16,16 @@ export async function listActiveByCooperative(cooperativeId: string): Promise<Dr
 }
 
 export async function getDriverById(id: string): Promise<DriverDto> {
+  console.log('[driverService] getDriverById called with id:', id)
   const res = await apiClient.get(`${BASE}/${id}`)
+  console.log('[driverService] getDriverById response:', res.data)
+  return res.data as DriverDto
+}
+
+export async function getDriverByUserId(userId: string): Promise<DriverDto> {
+  console.log('[driverService] getDriverByUserId called with userId:', userId)
+  const res = await apiClient.get(`${BASE}/usuario/${userId}`)
+  console.log('[driverService] getDriverByUserId response:', res.data)
   return res.data as DriverDto
 }
 

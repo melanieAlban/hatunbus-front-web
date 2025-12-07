@@ -22,7 +22,7 @@ export interface CreateDriverPayload {
   licenseType?: string | null
   issueDate?: string | null
   expirationDate?: string | null
-  active?: boolean
+  // NOTA: 'active' no se incluye porque el backend no lo acepta en la creación
 }
 
 export interface UpdateDriverPayload {
@@ -32,5 +32,5 @@ export interface UpdateDriverPayload {
   expirationDate?: string | null
   active?: boolean
   cooperativeId?: string
-  userId?: string
+  // NOTA: userId no se incluye porque el backend no lo acepta en la actualización
 }

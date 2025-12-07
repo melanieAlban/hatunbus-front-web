@@ -41,7 +41,7 @@
 
           <div class="col">
             <label class="label">Teléfono <span class="required">*</span></label>
-            <InputText v-model="form.phone" placeholder="Ej. +593987654321" />
+            <InputText v-model="form.phone" placeholder="Ej. 0987654321" maxlength="10" />
             <small class="field-error" v-if="errors.phone">{{ errors.phone }}</small>
           </div>
 
@@ -159,7 +159,7 @@ const errors = reactive<Record<string, string | null>>({})
 
 const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const hexColorRegex = /^#([A-Fa-f0-9]{6})$/
-const phoneRegex = /^\+?\d{9,15}$/
+const phoneRegex = /^\d{10}$/
 
 const submitLabel = computed(() => (props.model ? 'Guardar cambios' : 'Crear Cooperativa'))
 
@@ -246,7 +246,7 @@ function validate(): boolean {
   if (!trimmedPhone) {
     errors.phone = 'El telefono es obligatorio'
   } else if (!phoneRegex.test(trimmedPhone)) {
-    errors.phone = 'Formato de telefono invalido (+593987654321)'
+    errors.phone = 'El teléfono debe tener exactamente 10 dígitos'
   } else {
     errors.phone = null
   }

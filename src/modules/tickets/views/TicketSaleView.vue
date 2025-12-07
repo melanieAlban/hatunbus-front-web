@@ -596,7 +596,7 @@ const searchErrors = reactive({
 })
 
 const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
-const phoneRegex = /^\+?\d{9,15}$/
+const phoneRegex = /^\d{10}$/
 const cedulaRegex = /^\d{10}$/
 
 // Computed para obtener datos del store
@@ -1484,11 +1484,11 @@ function validatePassengersSection(): boolean {
 
     const idCard = passenger?.passengerIdCard?.trim() || ''
     if (!idCard) {
-      errorsForPassenger.passengerIdCard = 'La cédula es obligatoria'
+      errorsForPassenger.passengerIdCard = 'La cï¿½dula es obligatoria'
     } else if (!cedulaRegex.test(idCard)) {
-      errorsForPassenger.passengerIdCard = 'La cédula debe tener 10 dígitos'
+      errorsForPassenger.passengerIdCard = 'La cï¿½dula debe tener 10 dï¿½gitos'
     } else if (!isValidEcuadorianId(idCard)) {
-      errorsForPassenger.passengerIdCard = 'La cédula ecuatoriana no es válida'
+      errorsForPassenger.passengerIdCard = 'La cï¿½dula ecuatoriana no es vï¿½lida'
     }
 
     if (!passenger?.passengerType) {
@@ -1497,12 +1497,12 @@ function validatePassengersSection(): boolean {
 
     const email = passenger?.passengerEmail?.trim()
     if (email && !emailRegex.test(email)) {
-      errorsForPassenger.passengerEmail = 'Email inválido'
+      errorsForPassenger.passengerEmail = 'Email invï¿½lido'
     }
 
     const phone = passenger?.passengerPhone?.trim()
     if (phone && !phoneRegex.test(phone)) {
-      errorsForPassenger.passengerPhone = 'Teléfono inválido'
+      errorsForPassenger.passengerPhone = 'Telï¿½fono invï¿½lido'
     }
 
     if (Object.keys(errorsForPassenger).length > 0) {
