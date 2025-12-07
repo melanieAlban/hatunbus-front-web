@@ -116,10 +116,18 @@
                       v-tooltip.top="'Editar ruta'"
                     />
                     <Button
-                      icon="pi pi-trash"
+                      v-if="data.active"
+                      icon="pi pi-ban"
                       class="p-button-text p-button-danger"
                       @click="confirmDeleteRoute(data)"
-                      v-tooltip.top="'Eliminar ruta'"
+                      v-tooltip.top="'Desactivar ruta'"
+                    />
+                    <Button
+                      v-else
+                      icon="pi pi-check"
+                      class="p-button-text p-button-success"
+                      @click="confirmActivateRoute(data)"
+                      v-tooltip.top="'Reactivar ruta'"
                     />
                   </div>
                 </template>
@@ -321,6 +329,7 @@ import Checkbox from 'primevue/checkbox'
 import Calendar from 'primevue/calendar'
 import TabView from 'primevue/tabview'
 import TabPanel from 'primevue/tabpanel'
+import { useConfirm } from 'primevue/useconfirm'
 import FrequenciesTab from '../components/FrequenciesTab.vue'
 import { useAuthStore } from '../../auth/store/useAuthStore'
 import { useFrequencyStore } from '../../cooperatives/store/useFrequencyStore'
@@ -331,17 +340,21 @@ import {
   getFrequenciesByRoute,
   createRoute,
   updateRoute,
-  deleteRoute,
+  deactivateRoute,
   createFrequency,
   updateFrequency,
-  deleteFrequency,
+  deactivateFrequency,
+  activateRoute,
+  activateFrequency,
 } from '../../routes/services/routeService'
-import { confirm, error as notifyError, success } from '../../../lib/notifier'
+import { confirm as notifyConfirm, error as notifyError, success } from '../../../lib/notifier'
 import type { CityDto } from '../../tickets/services/cityService'
 import * as cityService from '../../tickets/services/cityService'
 
 type RouteDialogMode = 'create' | 'edit'
 type FrequencyDialogMode = 'create' | 'edit'
+
+const confirmDialog = useConfirm()
 
 interface FrequencySegmentForm {
   routeId: string
@@ -664,21 +677,56 @@ async function submitRouteForm() {
 }
 
 async function confirmDeleteRoute(route: RouteDto) {
-  const ok = await confirm({
-    title: 'Eliminar ruta',
-    message: `¿Eliminar la ruta ${route.name}?`,
-    acceptLabel: 'Eliminar',
+  confirmDialog.require({
+    message: `¿Desactivar la ruta "${route.name}"?\n\nSolo se desactivarán los detalles de hojas de ruta que usan esta ruta (la hoja completa se mantiene activa).`,
+    header: 'Confirmar Desactivación',
+    icon: 'pi pi-exclamation-triangle',
     rejectLabel: 'Cancelar',
+    acceptLabel: 'Desactivar',
+    accept: async () => {
+      try {
+        await deactivateRoute(route.id)
+        success('Ruta desactivada', `La ruta ${route.name} ha sido desactivada`)
+        await refreshRoutes()
+      } catch (error: any) {
+        console.error('[confirmDeleteRoute] Error:', error)
+        // Manejar específicamente diferentes tipos de errores
+        const status = error?.response?.status
+        const message = error?.response?.data?.message || error?.message
+        
+        if (status === 403) {
+          notifyError('Acceso Denegado', message || 'No tienes permisos para desactivar esta ruta')
+        } else if (status === 409) {
+          notifyError('No se puede desactivar', message || 'No se puede desactivar la ruta porque tiene boletos vendidos')
+        } else if (status === 404) {
+          notifyError('No encontrada', message || 'La ruta no existe')
+        } else {
+          notifyError('Error', message || 'No se pudo desactivar la ruta')
+        }
+      }
+    }
   })
-  if (!ok) return
-  try {
-    await deleteRoute(route.id)
-    success('Ruta eliminada', route.name)
-    await refreshRoutes()
-  } catch (error: any) {
-    const message = error?.response?.data?.message || error?.message || 'No se pudo eliminar la ruta'
-    notifyError('Error', message)
-  }
+}
+
+async function confirmActivateRoute(route: RouteDto) {
+  confirmDialog.require({
+    message: `¿Reactivar la ruta "${route.name}"?\n\nSe reactivarán los detalles de hojas de ruta que usan esta ruta y se regenerarán los viajes programados.`,
+    header: 'Confirmar Activación',
+    icon: 'pi pi-check-circle',
+    rejectLabel: 'Cancelar',
+    acceptLabel: 'Reactivar',
+    accept: async () => {
+      try {
+        await activateRoute(route.id)
+        success('Ruta reactivada', `La ruta ${route.name} ha sido reactivada`)
+        await refreshRoutes()
+      } catch (error: any) {
+        console.error('[confirmActivateRoute] Error:', error)
+        const message = error?.response?.data?.message || error?.message || 'No se pudo reactivar la ruta'
+        notifyError('Error', message)
+      }
+    }
+  })
 }
 
 function resetFrequencyForm() {
@@ -909,24 +957,65 @@ async function submitFrequencyForm() {
 }
 
 async function confirmDeleteFrequency(frequency: FrequencyDto) {
-  const ok = await confirm({
-    title: 'Eliminar frecuencia',
-    message: `¿Eliminar la frecuencia ${frequency.regulatoryResolution || frequency.id}?`,
-    acceptLabel: 'Eliminar',
+  confirmDialog.require({
+    message: `¿Desactivar la frecuencia "${frequency.regulatoryResolution || frequency.id}"?\n\nSolo se desactivarán los detalles de hojas de ruta que usan esta frecuencia (la hoja completa se mantiene activa).`,
+    header: 'Confirmar Desactivación',
+    icon: 'pi pi-exclamation-triangle',
     rejectLabel: 'Cancelar',
+    acceptLabel: 'Desactivar',
+    accept: async () => {
+      try {
+        await deactivateFrequency(frequency.id)
+        success('Frecuencia desactivada', `La frecuencia ${frequency.regulatoryResolution || frequency.id} ha sido desactivada`)
+        await refreshFrequenciesForRoutes(getRouteIdsFromFrequency(frequency))
+        await refreshAvailableFrequencies()
+        await frequenciesTabRef.value?.reload?.()
+      } catch (error: any) {
+        console.error('[confirmDeleteFrequency] Error:', error)
+        // Manejar específicamente diferentes tipos de errores
+        const status = error?.response?.status
+        const message = error?.response?.data?.message || error?.message
+        
+        if (status === 403) {
+          notifyError('Acceso Denegado', message || 'No tienes permisos para desactivar esta frecuencia')
+        } else if (status === 409) {
+          notifyError('No se puede desactivar', message || 'No se puede desactivar la frecuencia porque tiene boletos vendidos')
+        } else if (status === 404) {
+          notifyError('No encontrada', message || 'La frecuencia no existe')
+        } else {
+          notifyError('Error', message || 'No se pudo desactivar la frecuencia')
+        }
+      }
+    }
   })
-  if (!ok) return
-  try {
-    await deleteFrequency(frequency.id)
-    success('Frecuencia eliminada', frequency.regulatoryResolution || frequency.id)
-    await refreshFrequenciesForRoutes(getRouteIdsFromFrequency(frequency))
-    await refreshAvailableFrequencies()
-    await frequenciesTabRef.value?.reload?.()
-  } catch (error: any) {
-    const message =
-      error?.response?.data?.message || error?.message || 'No se pudo eliminar la frecuencia'
-    notifyError('Error', message)
-  }
+}
+
+async function confirmActivateFrequency(frequency: FrequencyDto) {
+  confirmDialog.require({
+    message: `¿Reactivar la frecuencia "${frequency.regulatoryResolution || frequency.id}"?\n\nSe reactivarán los detalles de hojas de ruta que usan esta frecuencia y se regenerarán los viajes programados.`,
+    header: 'Confirmar Activación',
+    icon: 'pi pi-check-circle',
+    rejectLabel: 'Cancelar',
+    acceptLabel: 'Reactivar',
+    accept: async () => {
+      try {
+        await activateFrequency(frequency.id)
+        success('Frecuencia reactivada', `La frecuencia ${frequency.regulatoryResolution || frequency.id} ha sido reactivada`)
+        await refreshFrequenciesForRoutes(getRouteIdsFromFrequency(frequency))
+        await refreshAvailableFrequencies()
+        await frequenciesTabRef.value?.reload?.()
+      } catch (error: any) {
+        console.error('[confirmActivateFrequency] Error:', error)
+        const status = error?.response?.status
+        const message = error?.response?.data?.message || error?.message
+        if (status === 403) {
+          notifyError('Acceso Denegado', message || 'No tienes permisos para reactivar esta frecuencia')
+        } else {
+          notifyError('Error', message || 'No se pudo reactivar la frecuencia')
+        }
+      }
+    }
+  })
 }
 
 function getRouteIdsFromFrequency(frequency: FrequencyDto) {
