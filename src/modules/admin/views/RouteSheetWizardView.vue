@@ -213,35 +213,33 @@ async function handleGenerateRouteSheet() {
     return
   }
 
-  confirm.require({
-    message: 'Se generará la hoja de ruta con la rotación planificada. ¿Continuar?',
-    header: 'Confirmar Generación',
-    icon: 'pi pi-exclamation-triangle',
-    rejectLabel: 'Cancelar',
-    acceptLabel: 'Generar',
-    accept: async () => {
-      isGenerating.value = true
-      try {
-        const request = {
-          startDate: formatDate(startDate.value),
-          busGroupId: selectedBusGroupId.value,
-          frequencies: wizard.orderedChain.map(freq => ({
-            frequencyId: freq.id,
-            operatingDays: undefined
-          }))
-        }
-
-        await generateForBusGroup(request)
-        success('Hoja de Ruta Generada', 'La hoja de ruta se creó exitosamente. Revisa el tab "Ver Hojas de Ruta".')
-        resetAll()
-      } catch (err: any) {
-        console.error('[Wizard] Error generando hoja:', err)
-        notifyError('Error', err?.response?.data?.message || 'No se pudo generar la hoja de ruta')
-      } finally {
-        isGenerating.value = false
-      }
+  isGenerating.value = true
+  try {
+    const request = {
+      startDate: formatDate(startDate.value),
+      busGroupId: selectedBusGroupId.value,
+      frequencies: wizard.orderedChain.map(freq => ({
+        frequencyId: freq.id,
+        operatingDays: undefined
+      }))
     }
-  })
+
+    await generateForBusGroup(request)
+    success('Hoja de Ruta Generada', 'La hoja de ruta se creó exitosamente. Revisa el tab "Ver Hojas de Ruta".')
+    resetAll()
+  } catch (err: any) {
+    console.error('[Wizard] Error generando hoja:', err)
+    
+    // Manejar específicamente el error 409 (conflicto de solapamiento)
+    if (err?.response?.status === 409) {
+      const errorMessage = err.response.data?.message || 'Ya existe una hoja de ruta que se solapa con el rango de fechas seleccionado'
+      notifyError('Solapamiento de Fechas', errorMessage)
+    } else {
+      notifyError('Error', err?.response?.data?.message || 'No se pudo generar la hoja de ruta')
+    }
+  } finally {
+    isGenerating.value = false
+  }
 }
 
 function formatDate(date: Date): string {
