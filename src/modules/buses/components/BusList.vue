@@ -15,6 +15,10 @@
             </div>
 
             <!-- Tabla de buses -->
+            <div class="list-actions">
+                <Button icon="pi pi-refresh" label="Refrescar" class="p-button-text" :disabled="store.loading"
+                    @click="$emit('refresh')" />
+            </div>
             <div class="table-container">
                 <table class="modern-table">
                     <thead class="table-header">
@@ -199,6 +203,7 @@ const emit = defineEmits<{
     (e: 'view', item: BusDto): void
     (e: 'edit', item: BusDto): void
     (e: 'delete', item: BusDto): void
+    (e: 'refresh'): void
 }>()
 
 const store = useBusStore()

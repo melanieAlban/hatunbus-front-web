@@ -94,6 +94,10 @@
               maxlength="50" 
               placeholder="Ej: 123456"
               class="w-full"
+              inputmode="numeric"
+              type="tel"
+              @keydown="onBodyNumberKeydown"
+              @update:modelValue="onBodyNumberUpdate"
             />
           </div>
         </div>
@@ -495,7 +499,12 @@ async function loadDriversByCooperative(cooperativeId?: string | null) {
   loadingDrivers.value = true
   try {
     const drivers = await driverService.listActiveByCooperative(cooperativeId)
-    driverOptions.value = drivers.map(mapDriverToOption)
+    const mapped = drivers.map(mapDriverToOption)
+    driverOptions.value = mapped.filter(
+      (option) =>
+        !option.assignedBusId ||
+        (props.model?.id && option.assignedBusId === props.model.id)
+    )
     ensureCurrentDriverOption()
   } catch (error) {
     console.error('[BusForm] Error loading drivers:', error)
@@ -539,6 +548,32 @@ function formatPlate() {
   }
   modelLocal.plate = value
 }
+
+function sanitizeDigits(value: any) {
+  return (value ?? '').toString().replace(/\D+/g, '')
+}
+
+function onBodyNumberKeydown(event: KeyboardEvent) {
+  const allowedControlKeys = ['Backspace', 'Tab', 'ArrowLeft', 'ArrowRight', 'Delete']
+  if (allowedControlKeys.includes(event.key)) return
+  if (!/^\d$/.test(event.key)) {
+    event.preventDefault()
+  }
+}
+
+function onBodyNumberUpdate(value: any) {
+  const cleaned = sanitizeDigits(value)
+  if (cleaned !== modelLocal.bodyNumber) {
+    modelLocal.bodyNumber = cleaned
+  }
+}
+
+watch(() => modelLocal.bodyNumber, (val) => {
+  const cleaned = sanitizeDigits(val)
+  if (cleaned !== val) {
+    modelLocal.bodyNumber = cleaned
+  }
+})
 
 function removeImage() {
   modelLocal.photo = null
