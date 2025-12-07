@@ -78,6 +78,20 @@
             <Tag :value="`${data.segments?.length || 0} segmentos`" severity="info" />
           </template>
         </Column>
+        <Column header="Días operativos">
+          <template #body="{ data }">
+            <div class="operating-days">
+              <Tag
+                v-for="day in formatOperatingDays(data.operatingDays)"
+                :key="day"
+                :value="day"
+                severity="info"
+                class="day-tag"
+              />
+              <span v-if="!data.operatingDays || !data.operatingDays.length">-</span>
+            </div>
+          </template>
+        </Column>
         <Column header="Estado" field="active" :sortable="true">
           <template #body="{ data }">
             <Tag :severity="data.active ? 'success' : 'danger'" :value="data.active ? 'Activa' : 'Inactiva'" />
@@ -88,7 +102,7 @@
             {{ data.regulatoryResolution || '-' }}
           </template>
         </Column>
-        <Column header="Acciones" style="width: 180px;">
+        <Column header="Acciones" style="width: 200px;">
           <template #body="{ data }">
             <div class="row-actions">
               <Button
@@ -98,10 +112,18 @@
                 v-tooltip.top="'Ver detalles'"
               />
               <Button
-                icon="pi pi-trash"
+                v-if="data.active"
+                icon="pi pi-ban"
                 class="p-button-text p-button-danger"
                 @click="confirmDelete(data)"
-                v-tooltip.top="'Eliminar'"
+                v-tooltip.top="'Desactivar'"
+              />
+              <Button
+                v-else
+                icon="pi pi-check"
+                class="p-button-text p-button-success"
+                @click="confirmActivate(data)"
+                v-tooltip.top="'Reactivar'"
               />
             </div>
           </template>
@@ -127,6 +149,19 @@
         <Divider />
         <div class="segments-list">
           <h5>Segmentos ({{ selectedFrequency.segments?.length || 0 }})</h5>
+          <div class="operating-days-detail">
+            <strong>Días operativos:</strong>
+            <span v-if="!selectedFrequency.operatingDays || !selectedFrequency.operatingDays.length">-</span>
+            <div v-else class="operating-days">
+              <Tag
+                v-for="day in formatOperatingDays(selectedFrequency.operatingDays)"
+                :key="day"
+                :value="day"
+                severity="info"
+                class="day-tag"
+              />
+            </div>
+          </div>
           <div
             v-for="segment in selectedFrequency.segments"
             :key="segment.id"
@@ -158,9 +193,20 @@ import Tag from 'primevue/tag'
 import Skeleton from 'primevue/skeleton'
 import Dialog from 'primevue/dialog'
 import Divider from 'primevue/divider'
-import { listAllFrequenciesByCooperative, deleteFrequency, deactivateFrequency } from '@/modules/routes/services/routeService'
+import { useConfirm } from 'primevue/useconfirm'
+import { listAllFrequenciesByCooperative, deactivateFrequency, activateFrequency } from '@/modules/routes/services/routeService'
 import type { FrequencyDto } from '@/modules/routes/interfaces/route.interface'
-import { confirm, success, error as notifyError } from '@/lib/notifier'
+import { confirm as notifyConfirm, success, error as notifyError } from '@/lib/notifier'
+
+const dayLabels: Record<string, string> = {
+  MONDAY: 'Lun',
+  TUESDAY: 'Mar',
+  WEDNESDAY: 'Mié',
+  THURSDAY: 'Jue',
+  FRIDAY: 'Vie',
+  SATURDAY: 'Sáb',
+  SUNDAY: 'Dom',
+}
 
 const props = defineProps<{
   cooperativeId: string | null
@@ -170,6 +216,7 @@ const emit = defineEmits<{
   createFrequency: []
 }>()
 
+const confirmDialog = useConfirm()
 const frequencies = ref<FrequencyDto[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -181,6 +228,11 @@ const selectedFrequency = ref<FrequencyDto | null>(null)
 const sanitizedFrequencies = computed(() =>
   frequencies.value.map(stripCompositeSegments)
 )
+
+function formatOperatingDays(days?: string[]) {
+  if (!days || !days.length) return []
+  return days.map((d) => dayLabels[d] || d)
+}
 
 const statusOptions = [
   { label: 'Todas', value: 'all' },
@@ -254,20 +306,61 @@ function viewFrequencyDetails(frequency: FrequencyDto) {
 }
 
 async function confirmDelete(frequency: FrequencyDto) {
-  const confirmed = await confirm(
-    `¿Eliminar permanentemente la frecuencia ${frequency.regulatoryResolution}?`,
-    'Confirmar eliminación'
-  )
+  confirmDialog.require({
+    message: `¿Desactivar la frecuencia "${frequency.regulatoryResolution}"?\n\nSolo se desactivarán los detalles de hojas de ruta que usan esta frecuencia (la hoja completa se mantiene activa).`,
+    header: 'Confirmar Desactivación',
+    icon: 'pi pi-exclamation-triangle',
+    rejectLabel: 'Cancelar',
+    acceptLabel: 'Desactivar',
+    accept: async () => {
+      try {
+        await deactivateFrequency(frequency.id)
+        success('Éxito', 'Frecuencia desactivada')
+        await loadFrequencies()
+      } catch (err: any) {
+        console.error('[confirmDelete] Error:', err)
+        // Manejar específicamente diferentes tipos de errores
+        const status = err?.response?.status
+        const message = err?.response?.data?.message || err?.message
+        
+        if (status === 403) {
+          notifyError('Acceso Denegado', message || 'No tienes permisos para desactivar esta frecuencia')
+        } else if (status === 409) {
+          notifyError('No se puede desactivar', message || 'No se puede desactivar la frecuencia porque tiene boletos vendidos')
+        } else if (status === 404) {
+          notifyError('No encontrada', message || 'La frecuencia no existe')
+        } else {
+          notifyError('Error', message || 'Error al desactivar la frecuencia')
+        }
+      }
+    }
+  })
+}
 
-  if (!confirmed) return
-
-  try {
-    await deleteFrequency(frequency.id)
-    success('Éxito', 'Frecuencia eliminada')
-    await loadFrequencies()
-  } catch (err: any) {
-    notifyError('Error', err.response?.data?.message || 'Error al eliminar')
-  }
+async function confirmActivate(frequency: FrequencyDto) {
+  confirmDialog.require({
+    message: `¿Reactivar la frecuencia "${frequency.regulatoryResolution}"?\n\nSe reactivarán los detalles de hojas de ruta que usan esta frecuencia y se regenerarán los viajes programados.`,
+    header: 'Confirmar Activación',
+    icon: 'pi pi-check-circle',
+    rejectLabel: 'Cancelar',
+    acceptLabel: 'Reactivar',
+    accept: async () => {
+      try {
+        await activateFrequency(frequency.id)
+        success('Frecuencia reactivada', `La frecuencia ${frequency.regulatoryResolution} ha sido reactivada`)
+        await loadFrequencies()
+      } catch (err: any) {
+        console.error('[confirmActivate] Error:', err)
+        const status = err?.response?.status
+        const message = err?.response?.data?.message || err?.message
+        if (status === 403) {
+          notifyError('Acceso Denegado', message || 'No tienes permisos para reactivar esta frecuencia')
+        } else {
+          notifyError('Error', message || 'No se pudo reactivar la frecuencia')
+        }
+      }
+    }
+  })
 }
 
 function createFrequency() {
@@ -399,6 +492,24 @@ watch(() => props.cooperativeId, (newId) => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.operating-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.operating-days-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.day-tag {
+  background: var(--surface-100, #f3f4f6);
+  color: var(--text-color, #111827);
 }
 
 .segments-list h5 {

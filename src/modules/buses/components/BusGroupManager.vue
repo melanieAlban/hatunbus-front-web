@@ -232,6 +232,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:visible', value: boolean): void
+  (e: 'refresh'): void
 }>()
 
 const authStore = useAuthStore()
@@ -378,6 +379,7 @@ function viewGroupBuses(group: BusGroupDto) {
   loadingGroupBuses.value = true
   groupBuses.value = []
   showViewBuses.value = true
+  selectedGroupForAdd.value = group
   try {
     busService.listByGroup(group.id).then(b => {
       groupBuses.value = b
@@ -442,6 +444,7 @@ async function assignExistingBus(bus: any) {
     }
     // refresh groups in background to keep in sync
     loadGroups().catch((e) => console.warn('[BusGroupManager] background loadGroups failed', e))
+    emit('refresh')
     showAddExisting.value = false
     selectedGroupForAdd.value = null
   } catch (err: any) {
@@ -514,13 +517,21 @@ async function onCreateBusFromGroup(payload: any, file?: File) {
       groups.value[idx].busCount = (groups.value[idx].busCount || 0) + 1
     }
     // refresh groups in background
-    loadGroups().catch((e) => console.warn('[BusGroupManager] background loadGroups failed', e))
+    await loadGroups()
+    await viewGroupBuses(selectedGroupForAdd.value)
+    emit('refresh')
     showAddBus.value = false
     selectedGroupForAdd.value = null
+    resetBusForm()
   } catch (err: any) {
     console.error('[BusGroupManager] Error creating bus in group:', err)
     notifyError('Error', err?.response?.data?.message || 'No se pudo crear el bus en el grupo')
   }
+}
+
+function resetBusForm() {
+  // Limpiar selección de bus en detalle
+  selectedBus.value = null
 }
 </script>
 

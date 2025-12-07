@@ -8,23 +8,15 @@
       <div class="header-right">
         <Button label="Gestionar Grupos" icon="pi pi-sitemap" @click="showGroupManager = true" class="p-button-outlined" />
         <Button label="Templates" icon="pi pi-th-large" @click="showTemplateManager = true" class="p-button-outlined" />
-        <button class="btn-primary" @click="showCreate = true">+ Crear Bus</button>
       </div>
     </header>
 
-    <BusList :query="query" @view="onView" @edit="onEdit" @delete="onDelete" />
+    <BusList :query="query" @view="onView" @edit="onEdit" @delete="onDelete" @refresh="refreshBuses" />
 
     <BusDetail
       :visible="!!viewing"
       :bus="viewing"
       @update:visible="val => { if (!val) viewing = null }"
-    />
-
-    <BusForm
-      :visible="showCreate"
-      @update:visible="val => (showCreate = val)"
-      @submit="(payload, file, driverId) => create(payload as CreateBusRequest, file, driverId)"
-      @cancel="() => (showCreate = false)"
     />
 
     <BusForm
@@ -38,6 +30,7 @@
     <BusGroupManager
       :visible="showGroupManager"
       @update:visible="val => (showGroupManager = val)"
+      @refresh="refreshBuses"
     />
 
     <TemplateManager
@@ -59,14 +52,13 @@ import { useBusStore } from '../store/useBusStore'
 import { useCooperativeStore } from '../../cooperatives/store/useCooperativeStore'
 import { useAuthStore } from '../../auth/store/useAuthStore'
 import * as service from '../services/busService'
-import type { BusDto, CreateBusRequest, UpdateBusPayload } from '../interfaces/bus.interface'
+import type { BusDto, UpdateBusPayload } from '../interfaces/bus.interface'
 import { confirm, success, error as notifyError } from '../../../lib/notifier'
 
 const store = useBusStore()
 const coopStore = useCooperativeStore()
 const authStore = useAuthStore()
 const query = ref('')
-const showCreate = ref(false)
 const editing = ref<BusDto | null>(null)
 const viewing = ref<BusDto | null>(null)
 const showGroupManager = ref(false)
@@ -75,75 +67,12 @@ const cooperatives = ref<any[]>([])
 const selectedCoop = ref<string | null>(null)
 
 onMounted(async () => {
-  // Cargar cooperativas y buses
-  try {
-    await coopStore.fetchAll()
-    cooperatives.value = coopStore.items || []
-    
-    // Si es usuario COOPERATIVE, cargar solo sus buses
-    if (authStore.user?.role === 'COOPERATIVE' && authStore.user?.cooperativeId) {
-      await store.fetchByCooperative(authStore.user.cooperativeId)
-    } else if (cooperatives.value.length > 0) {
-      // Para ADMIN, mostrar todas las cooperativas
-      selectedCoop.value = 'ALL'
-      const ids = cooperatives.value.map((c: any) => c.id)
-      await store.fetchByCooperatives(ids)
-      console.log('[BusesView] buses cargados:', JSON.parse(JSON.stringify(store.items)))
-    }
-  } catch (e: any) {
-    console.error('[BusesView] error loading cooperativas:', e)
-    const errorMsg = e?.response?.data?.message || e?.message || 'Error cargando datos'
-    notifyError('Error al cargar', errorMsg)
-  }
+  await refreshBuses()
 })
 
 async function onCooperativeChange(id: string | null) {
   selectedCoop.value = id
-  if (!id) {
-    store.items = []
-    return
-  }
-
-  if (id === 'ALL') {
-    const ids = cooperatives.value.map((c: any) => c.id)
-    await store.fetchByCooperatives(ids)
-  } else {
-    await store.fetchByCooperative(id)
-  }
-}
-
-async function create(payload: CreateBusRequest, file?: File, driverId?: string | null) {
-  try {
-    console.log('[BusesView] create received payload:', payload, 'file:', !!file, 'driverId:', driverId)
-    let created: BusDto | null = null
-    if (file) {
-      // backend expects multipart/form-data for create with file
-      if (typeof store.createMultipart === 'function') {
-        created = await store.createMultipart(payload, file)
-      } else {
-        // fallback: call service directly
-        created = await service.createBus(payload, file)
-      }
-    } else {
-      created = await store.create(payload)
-    }
-
-    // If a driver was selected in the form, assign it using the dedicated endpoint
-    if (created && driverId) {
-      try {
-        await service.assignDriver(created.id, driverId)
-      } catch (errAssign) {
-        console.warn('[BusesView] could not assign driver after create', errAssign)
-      }
-    }
-
-    showCreate.value = false
-    success('Bus creado', `Placa: ${payload.plate}`)
-  } catch (e) {
-    console.error('[BusesView] create error:', e)
-    const err: any = e
-    notifyError('Error', err?.response?.data?.message || err?.message || 'Error creando bus')
-  }
+  await refreshBuses()
 }
 
 function onView(item: BusDto) {
@@ -199,6 +128,32 @@ async function onDelete(item: BusDto) {
   } catch (e) {
     const err: any = e
     notifyError('Error', err?.response?.data?.message || err?.message || 'No se pudo eliminar')
+  }
+}
+
+async function refreshBuses() {
+  // Cargar cooperativas y buses
+  try {
+    await coopStore.fetchAll()
+    cooperatives.value = coopStore.items || []
+
+    if (authStore.user?.role === 'COOPERATIVE' && authStore.user?.cooperativeId) {
+      selectedCoop.value = authStore.user.cooperativeId
+      await store.fetchByCooperative(authStore.user.cooperativeId)
+    } else {
+      // admin / clerk: si hay selección específica, respeta; sino trae todos
+      if (!selectedCoop.value || selectedCoop.value === 'ALL') {
+        selectedCoop.value = 'ALL'
+        const ids = cooperatives.value.map((c: any) => c.id)
+        await store.fetchByCooperatives(ids)
+      } else {
+        await store.fetchByCooperative(selectedCoop.value)
+      }
+    }
+  } catch (e: any) {
+    console.error('[BusesView] error loading buses/cooperativas:', e)
+    const errorMsg = e?.response?.data?.message || e?.message || 'Error cargando datos'
+    notifyError('Error al cargar', errorMsg)
   }
 }
 </script>
