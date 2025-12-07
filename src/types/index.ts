@@ -4,6 +4,8 @@ export interface RouteSheetDto {
   id: string;
   cooperativeId: string;
   cooperativeName?: string;
+  busGroupId?: string;
+  busGroupName?: string;
   startDate: string;
   endDate: string;
   status: string;
