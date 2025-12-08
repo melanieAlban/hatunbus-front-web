@@ -808,12 +808,22 @@ function validate(): boolean {
   if (!modelLocal.role) {
     errors.role = 'El rol es obligatorio'
     isValid = false
-  } else if (modelLocal.role === 'CLERK' && !modelLocal.cooperativeId) {
-    errors.cooperativeId = 'La cooperativa es obligatoria para un oficinista'
-    isValid = false
-  } else if (modelLocal.role === 'COOPERATIVE' && !modelLocal.cooperativeId) {
-    errors.cooperativeId = 'La cooperativa es obligatoria para un usuario de tipo Cooperativa'
-    isValid = false
+  } else {
+    // Si es COOPERATIVE creando un CLERK o DRIVER, asignar automáticamente su cooperativa antes de validar
+    if (isCooperative.value && (modelLocal.role === 'CLERK' || modelLocal.role === 'DRIVER')) {
+      if (!modelLocal.cooperativeId) {
+        modelLocal.cooperativeId = authStore.user?.cooperativeId || null
+      }
+    }
+    
+    // Ahora validar que tenga cooperativa si es necesario
+    if (modelLocal.role === 'CLERK' && !modelLocal.cooperativeId) {
+      errors.cooperativeId = 'La cooperativa es obligatoria para un oficinista'
+      isValid = false
+    } else if (modelLocal.role === 'COOPERATIVE' && !modelLocal.cooperativeId) {
+      errors.cooperativeId = 'La cooperativa es obligatoria para un usuario de tipo Cooperativa'
+      isValid = false
+    }
   }
 
   // Validación de campos de conductor si se solicitan
