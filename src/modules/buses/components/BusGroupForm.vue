@@ -48,7 +48,7 @@
         </div>
 
         <Button
-          label="+ Crear Nuevo Template"
+          label="Crear Nuevo Template"
           @click="showCreateTemplate"
           class="p-button-text p-button-sm"
           icon="pi pi-plus"
@@ -65,6 +65,7 @@
             id="groupName"
             v-model="formData.name"
             placeholder="Ej: Flota VIP Norte"
+            maxlength="70"
             :class="{ 'p-invalid': errors.name }"
           />
           <small v-if="errors.name" class="p-error">{{ errors.name }}</small>
@@ -236,10 +237,12 @@ function validate(): boolean {
   
   if (!formData.value.name?.trim()) {
     errors.value.name = 'El nombre es obligatorio'
+    notifyError('Campo requerido', 'El nombre del grupo es obligatorio')
+    return false
   }
   
   if (!selectedTemplate.value) {
-    notifyError('Error', 'Debes seleccionar un template')
+    notifyError('Template requerido', 'Debes seleccionar un template para el grupo')
     return false
   }
   

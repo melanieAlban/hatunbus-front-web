@@ -49,6 +49,10 @@ export async function deactivateRoute(id: string): Promise<void> {
   await apiClient.patch(`${ROUTE_BASE}/${id}/desactivar`)
 }
 
+export async function activateRoute(id: string): Promise<void> {
+  await apiClient.patch(`${ROUTE_BASE}/${id}/activar`)
+}
+
 export async function createFrequency(payload: CreateFrequencyPayload): Promise<FrequencyDto> {
   const res = await apiClient.post(`${FREQUENCY_BASE}`, payload)
   return res.data as FrequencyDto
@@ -65,6 +69,10 @@ export async function deleteFrequency(id: string): Promise<void> {
 
 export async function deactivateFrequency(id: string): Promise<void> {
   await apiClient.patch(`${FREQUENCY_BASE}/${id}/desactivar`)
+}
+
+export async function activateFrequency(id: string): Promise<void> {
+  await apiClient.patch(`${FREQUENCY_BASE}/${id}/activar`)
 }
 
 export default {

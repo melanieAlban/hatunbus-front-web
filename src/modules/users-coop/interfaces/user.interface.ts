@@ -16,7 +16,8 @@ export interface UserCoopDto {
   // Driver-specific fields
   licenseNumber?: string | null
   licenseType?: string | null
-  licenseExpiry?: string | null
+  issueDate?: string | null
+  expirationDate?: string | null
 }
 
 export interface CreateUserPayload {
@@ -31,24 +32,20 @@ export interface CreateUserPayload {
   gender?: string | null
   profilePhoto?: string | null // optional base64 data URL
   cooperativeId?: string | null // required when role = CLERK
-  // Driver-specific fields (required when role = DRIVER)
-  licenseNumber?: string | null
-  licenseType?: string | null
-  licenseExpiry?: string | null
+  // NOTA: Los campos de licencia NO se incluyen aquí porque el backend no los acepta.
+  // Los datos del conductor se manejan por separado via /api/conductores
 }
 
 export interface UpdateUserPayload {
   firstNames?: string
   lastNames?: string
-  idCard?: string
+  // NOTA: idCard no se incluye porque el backend no permite actualizar la cédula
   email?: string | null
   phone?: string | null
   birthDate?: string | null
   gender?: string | null
   profilePhoto?: string | null // base64 data URL
   active?: boolean
-  // Driver-specific fields
-  licenseNumber?: string | null
-  licenseType?: string | null
-  licenseExpiry?: string | null
+  // NOTA: Los campos de licencia NO se incluyen aquí porque el backend no los acepta.
+  // Los datos del conductor se manejan por separado via /api/conductores
 }

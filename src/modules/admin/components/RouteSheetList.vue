@@ -87,7 +87,7 @@
           </template>
         </Column>
 
-        <Column header="Acciones" style="min-width: 280px">
+        <Column header="Acciones" style="min-width: 200px">
           <template #body="{ data }">
             <div class="row-actions">
               <button class="btn-ghost btn-sm" @click="viewDetails(data)">
@@ -97,26 +97,6 @@
               <button class="btn-ghost btn-sm" @click="viewMatrix(data)">
                 <i class="pi pi-table"></i>
                 Ver Matriz
-              </button>
-              <button
-                v-if="data.status === 'ACTIVE'"
-                class="btn-ghost btn-sm btn-warning"
-                @click="changeStatus(data, 'INACTIVE')"
-              >
-                <i class="pi pi-pause"></i>
-                Desactivar
-              </button>
-              <button
-                v-else
-                class="btn-ghost btn-sm btn-success"
-                @click="changeStatus(data, 'ACTIVE')"
-              >
-                <i class="pi pi-play"></i>
-                Activar
-              </button>
-              <button class="btn-ghost btn-sm btn-danger" @click="deleteSheet(data)">
-                <i class="pi pi-trash"></i>
-                Eliminar
               </button>
             </div>
           </template>
@@ -170,28 +150,31 @@
             </div>
 
             <template v-for="(row, rowIdx) in matrixData.rows" :key="rowIdx">
-              <div
-                class="data-cell sticky-col time-label"
-                :style="{ gridColumn: 1, gridRow: rowIdx + 2 }"
-                :class="{ 'rest-row': row.type === 'REST' }"
-              >
-                {{ row.meta }}
-              </div>
-              <div
-                class="data-cell sticky-col route-label"
-                :style="{ gridColumn: 2, gridRow: rowIdx + 2 }"
-                :class="{ 'rest-row': row.type === 'REST' }"
-              >
-                {{ row.label }}
-              </div>
-              <div
-                v-for="(date, dateIdx) in matrixData.dates"
-                :key="date"
-                class="data-cell assignment-cell"
-                :style="{ gridColumn: dateIdx + 3, gridRow: rowIdx + 2 }"
-                :class="[getCellClass(row.cells[date]), { 'rest-cell': row.type === 'REST' }]"
-              >
-                <div class="bus-numbers">
+            <div
+              class="data-cell sticky-col time-label"
+              :style="{ gridColumn: 1, gridRow: rowIdx + 2 }"
+              :class="{ 'rest-row': row.type === 'REST', 'deactivated-row': row.deactivated }"
+            >
+              {{ row.meta }}
+            </div>
+            <div
+              class="data-cell sticky-col route-label"
+              :style="{ gridColumn: 2, gridRow: rowIdx + 2 }"
+              :class="{ 'rest-row': row.type === 'REST', 'deactivated-row': row.deactivated }"
+            >
+              {{ row.label }}
+            </div>
+            <div
+              v-for="(date, dateIdx) in matrixData.dates"
+              :key="date"
+              class="data-cell assignment-cell"
+              :style="{ gridColumn: dateIdx + 3, gridRow: rowIdx + 2 }"
+              :class="[getCellClass(row.cells[date]), { 'rest-cell': row.type === 'REST', 'deactivated-cell': row.deactivated }]"
+            >
+                <div v-if="!row.cells[date]?.buses || row.cells[date]?.buses.length === 0" class="empty-cell-content">
+                  N/A
+                </div>
+                <div v-else class="bus-numbers">
                   <span
                     v-for="bus in row.cells[date]?.buses || []"
                     :key="bus"
@@ -253,12 +236,29 @@
         </div>
 
         <DataTable v-else :value="visibleSheetDetails" :scrollable="true" scrollHeight="400px">
-          <Column field="routeName" header="Ruta" style="min-width: 200px"></Column>
-          <Column field="routeOrigin" header="Origen" style="min-width: 150px"></Column>
-          <Column field="routeDestination" header="Destino" style="min-width: 150px"></Column>
-          <Column field="departureTime" header="Hora" style="min-width: 100px"></Column>
-          <Column field="busPlate" header="Bus" style="min-width: 120px"></Column>
-          <Column field="driverName" header="Conductor" style="min-width: 200px"></Column>
+          <Column header="Estado" style="width: 120px">
+            <template #body="{ data }">
+              <Tag
+                v-if="data.deactivated"
+                value="Desactivada"
+                severity="danger"
+                v-tooltip.top="data.deactivationReason || 'Desactivada'"
+              />
+              <Tag v-else value="Activa" severity="success" />
+            </template>
+          </Column>
+          <Column header="Frecuencia" style="min-width: 250px">
+            <template #body="{ data }">
+              <div :class="{ 'deactivated-text': data.deactivated }">
+                <div style="font-weight: 600; margin-bottom: 4px;">
+                  {{ data.routeOrigin }} → {{ data.routeDestination }}
+                </div>
+                <div style="font-size: 0.9em; color: var(--text-color-secondary);">
+                  {{ data.departureTime }}
+                </div>
+              </div>
+            </template>
+          </Column>
         </DataTable>
       </div>
     </Dialog>
@@ -305,8 +305,12 @@ interface RouteSheetDetailDto {
   primaryDriverId: string;
   driverName: string;
   driverLicense: string;
-  operatingDays: string[];
+  operatingDays?: string[];
+  busUnitNumber?: number;
   createdAt: string;
+  deactivated?: boolean;
+  deactivatedAt?: string;
+  deactivationReason?: string;
 }
 
 const auth = useAuthStore();
@@ -326,7 +330,7 @@ const matrixError = ref<string | null>(null);
 const matrixData = ref<any>(null);
 
 const visibleSheetDetails = computed(() =>
-  sheetDetails.value.filter((detail) => !isCompositeSegment(detail))
+  sheetDetails.value.filter((detail) => !isCompositeSegment(detail) && !detail.deactivated)
 );
 
 const groupFilterOptions = ref([{ label: "Todos los grupos", value: null }]);
@@ -430,7 +434,10 @@ function buildMatrixFromDetails(
   const end = new Date(sheet.endDate + "T00:00:00");
   const dates: string[] = [];
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    dates.push(d.toISOString().split("T")[0]);
+    const [dateString] = d.toISOString().split("T");
+    if (dateString) {
+      dates.push(dateString);
+    }
   }
 
   const dayNames = [
@@ -451,6 +458,7 @@ function buildMatrixFromDetails(
       firstOrigin: string;
       lastDestination: string;
       firstTime: string;
+      deactivated: boolean;
       segments: Map<
         string,
         { time: string; origin: string; destination: string; order: number }
@@ -472,12 +480,16 @@ function buildMatrixFromDetails(
         firstOrigin: "",
         lastDestination: "",
         firstTime: "99:99",
+        deactivated: false,
         segments: new Map(),
         busesByDate: new Map(),
       });
     }
 
     const freq = frequencyMap.get(freqName)!;
+    if (detail.deactivated) {
+      freq.deactivated = true;
+    }
     const segOrder = detail.segmentOrder ?? 0;
     const time = detail.departureTime?.toString().substring(0, 5) || "00:00";
 
@@ -506,11 +518,13 @@ function buildMatrixFromDetails(
       freq.lastDestination = detail.routeDestination || "";
     }
 
-    if (busNumber && detail.operatingDays) {
+    const operatingDays = detail.operatingDays ?? [];
+
+    if (busNumber && operatingDays.length > 0) {
       for (const date of dates) {
         const dayOfWeek = new Date(date + "T00:00:00").getDay();
         const fullDay = dayNames[dayOfWeek];
-        if (detail.operatingDays.includes(fullDay)) {
+        if (operatingDays.includes(fullDay)) {
           if (!freq.busesByDate.has(date)) {
             freq.busesByDate.set(date, new Set());
           }
@@ -527,6 +541,7 @@ function buildMatrixFromDetails(
     label: string;
     meta: string;
     type: string;
+    deactivated?: boolean;
     cells: Record<string, { type: string; buses: number[] }>;
   }> = [];
 
@@ -543,14 +558,18 @@ function buildMatrixFromDetails(
     const cells: Record<string, { type: string; buses: number[] }> = {};
     for (const date of dates) {
       const buses = freq.busesByDate.get(date);
-      const busArray = buses ? Array.from(buses).sort((a, b) => a - b) : [];
+      const busArray = buses
+        ? Array.from(buses)
+            .filter((value): value is number => typeof value === "number")
+            .sort((a, b) => a - b)
+        : [];
       cells[date] = {
         type: "TRIP",
         buses: busArray.length > 0 ? [busArray[0]] : [],
       };
     }
 
-    rows.push({ label, meta, type: "TRIP", cells });
+    rows.push({ label, meta, type: "TRIP", cells, deactivated: freq.deactivated });
   }
 
   const paradaCells: Record<string, { type: string; buses: number[] }> = {};
@@ -1081,6 +1100,12 @@ function isCompositeSegment(detail: { segmentOrder?: number }) {
   font-weight: 700;
 }
 
+.deactivated-row {
+  background: #fee2e2 !important;
+  color: #991b1b;
+  font-weight: 700;
+}
+
 .assignment-cell {
   transition: all 0.15s ease;
 }
@@ -1090,11 +1115,30 @@ function isCompositeSegment(detail: { segmentOrder?: number }) {
 }
 
 .cell-empty {
-  background: #fafafa;
+  background: repeating-linear-gradient(
+    45deg,
+    #f8f9fa,
+    #f8f9fa 10px,
+    #e9ecef 10px,
+    #e9ecef 20px
+  );
+}
+
+.empty-cell-content {
+  color: #6c757d;
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-align: center;
+  opacity: 0.7;
 }
 
 .rest-cell {
   background: #fef3c7 !important;
+}
+
+.deactivated-cell {
+  background: #fee2e2 !important;
+  border-color: #fecdd3;
 }
 
 .bus-numbers {
@@ -1115,6 +1159,11 @@ function isCompositeSegment(detail: { segmentOrder?: number }) {
   font-size: 0.8125rem;
   min-width: 32px;
   text-align: center;
+}
+
+.deactivated-text {
+  color: #9ca3af;
+  text-decoration: line-through;
 }
 
 @media (max-width: 768px) {

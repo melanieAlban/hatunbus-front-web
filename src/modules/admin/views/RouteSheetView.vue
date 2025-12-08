@@ -196,7 +196,7 @@ import Button from 'primevue/button'
 import Dropdown from 'primevue/dropdown'
 import Calendar from 'primevue/calendar'
 import Tag from 'primevue/tag'
-import { error as notifyError, success } from '../../../lib/notifier'
+import { confirm, error as notifyError, success } from '../../../lib/notifier'
 import { useAuthStore } from '../../auth/store/useAuthStore'
 import { useRouteWizardStore } from '../../routes/store/useRouteWizardStore'
 import { useFrequencyStore } from '../../cooperatives/store/useFrequencyStore'
@@ -270,9 +270,12 @@ async function onVerifyChain() {
 async function generateRouteSheet() {
   if (!canGenerate.value) return
 
-  const confirmed = window.confirm(
-    'Se generará la hoja de ruta con la rotación planificada. ¿Continuar?'
-  )
+  const confirmed = await confirm({
+    title: 'Confirmar generación',
+    message: 'Se generará la hoja de ruta con la rotación planificada.\n¿Continuar?',
+    acceptLabel: 'Sí, generar',
+    rejectLabel: 'Cancelar'
+  })
 
   if (!confirmed) return
 
@@ -298,7 +301,14 @@ async function generateRouteSheet() {
     await routeSheetListRef.value?.reload?.()
   } catch (err: any) {
     console.error('[RouteSheetView] Error generando hoja:', err)
-    notifyError('Error', err?.response?.data?.message || 'No se pudo generar la hoja de ruta')
+    
+    // Manejar específicamente el error 409 (conflicto de solapamiento)
+    if (err?.response?.status === 409) {
+      const errorMessage = err.response.data?.message || 'Ya existe una hoja de ruta que se solapa con el rango de fechas seleccionado'
+      notifyError('Solapamiento de Fechas', errorMessage)
+    } else {
+      notifyError('Error', err?.response?.data?.message || 'No se pudo generar la hoja de ruta')
+    }
   } finally {
     isGenerating.value = false
   }
