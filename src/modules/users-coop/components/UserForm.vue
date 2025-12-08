@@ -82,8 +82,8 @@
             <InputText 
               v-model="modelLocal.phone" 
               :class="{ 'p-invalid': errors.phone }" 
-              maxlength="16" 
-              placeholder="Ingrese el teléfono"
+              maxlength="10" 
+              placeholder="0987654321"
               class="w-full"
             />
             <small v-if="errors.phone" class="p-error">{{ errors.phone }}</small>
@@ -378,6 +378,7 @@ import Tooltip from 'primevue/tooltip'
 import type { UserCoopDto, CreateUserPayload, UpdateUserPayload } from '../interfaces/user.interface'
 import { useCooperativeStore } from '../../cooperatives/store/useCooperativeStore'
 import { useAuthStore } from '../../auth/store/useAuthStore'
+import { error as notifyError } from '@/lib/notifier'
 
 const props = defineProps<{ 
   visible?: boolean; 
@@ -474,7 +475,7 @@ const modelLocal = reactive<any>({
 
 const errors = reactive<any>({})
 const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
-const phoneRegex = /^\+?\d{9,15}$/
+const phoneRegex = /^\d{10}$/
 
 function sanitizeDigits(value: string, maxLength?: number) {
   const digits = (value || '').replace(/\D/g, '')
@@ -526,6 +527,16 @@ watch(() => modelLocal.phone, (value) => {
   }
 })
 
+// Calcular automáticamente la fecha de expiración (+5 años) cuando se selecciona la fecha de emisión
+watch(() => modelLocal.issueDate, (issueDate) => {
+  if (issueDate instanceof Date && !isNaN(issueDate.getTime())) {
+    // Solo calcular si no hay fecha de expiración o si es la primera vez
+    const expirationDate = new Date(issueDate)
+    expirationDate.setFullYear(expirationDate.getFullYear() + 5)
+    modelLocal.expirationDate = expirationDate
+  }
+})
+
 // Generar contraseña automática de 8 caracteres
 function generatePassword() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%&*'
@@ -573,6 +584,7 @@ function onFileSelect(event: any) {
 }
 
 watch(() => props.model, (v) => {
+  console.log('[UserForm] watch props.model triggered:', v)
   if (v) {
     // Map DTO to form model
     modelLocal.firstNames = v.firstNames || ''
@@ -584,23 +596,37 @@ watch(() => props.model, (v) => {
     modelLocal.birthDate = v.birthDate ? new Date(v.birthDate) : null
     modelLocal.gender = v.gender || null
     modelLocal.profilePhoto = v.profilePhoto || null
-      modelLocal.cooperativeId = v.cooperativeId || null
-      modelLocal.active = typeof v.active === 'boolean' ? v.active : true
-      modelLocal.password = ''
-      // if parent forced role, keep it
-      if (props.fixedRole) {
-        modelLocal.role = props.fixedRole
-      }
-      // Copiar campos de conductor si vienen en el modelo (editar conductor)
-      const vm: any = v as any
-      if (vm.licenseNumber) modelLocal.licenseNumber = vm.licenseNumber
-      if (vm.licenseType) modelLocal.licenseType = vm.licenseType
-      if (vm.issueDate) modelLocal.issueDate = vm.issueDate ? new Date(vm.issueDate) : null
-      if (vm.expirationDate) modelLocal.expirationDate = vm.expirationDate ? new Date(vm.expirationDate) : null
+    modelLocal.cooperativeId = v.cooperativeId || null
+    modelLocal.active = typeof v.active === 'boolean' ? v.active : true
+    modelLocal.password = ''
+    // if parent forced role, keep it
+    if (props.fixedRole) {
+      modelLocal.role = props.fixedRole
+    }
+    // Copiar campos de conductor si vienen en el modelo (editar conductor)
+    const vm: any = v as any
+    console.log('[UserForm] Driver fields from model:', {
+      licenseNumber: vm.licenseNumber,
+      licenseType: vm.licenseType,
+      issueDate: vm.issueDate,
+      expirationDate: vm.expirationDate
+    })
+    modelLocal.licenseNumber = vm.licenseNumber || ''
+    modelLocal.licenseType = vm.licenseType || null
+    modelLocal.issueDate = vm.issueDate ? new Date(vm.issueDate) : null
+    modelLocal.expirationDate = vm.expirationDate ? new Date(vm.expirationDate) : null
+    console.log('[UserForm] modelLocal after update:', {
+      licenseNumber: modelLocal.licenseNumber,
+      licenseType: modelLocal.licenseType,
+      issueDate: modelLocal.issueDate,
+      expirationDate: modelLocal.expirationDate,
+      birthDate: modelLocal.birthDate,
+      gender: modelLocal.gender
+    })
   } else {
     resetForm()
   }
-}, { immediate: true })
+}, { immediate: true, deep: true })
 
   // Si se pasa cooperativeId o fixedRole como prop, aplicarlos al formulario inicial
   if (props.cooperativeId) {
@@ -624,9 +650,10 @@ function resetForm() {
   modelLocal.active = true
   modelLocal.password = ''
   // Driver-specific fields
-  modelLocal.licenseNumber = null
+  modelLocal.licenseNumber = ''
   modelLocal.licenseType = null
-  modelLocal.licenseExpiry = null
+  modelLocal.issueDate = null
+  modelLocal.expirationDate = null
 
   // Limpiar errores
   Object.keys(errors).forEach(key => {
@@ -640,6 +667,52 @@ function onVisibleChange(value: boolean) {
     resetForm()
   }
 }
+
+// Watch para sincronizar modelo cuando el modal se abre
+watch(() => props.visible, (isVisible) => {
+  if (isVisible && props.model) {
+    console.log('[UserForm] Modal opened, syncing model:', props.model)
+    const v = props.model
+    modelLocal.firstNames = v.firstNames || ''
+    modelLocal.lastNames = v.lastNames || ''
+    modelLocal.idCard = v.idCard || ''
+    modelLocal.email = v.email || null
+    modelLocal.phone = v.phone || null
+    modelLocal.role = v.role || ''
+    modelLocal.birthDate = v.birthDate ? new Date(v.birthDate) : null
+    modelLocal.gender = v.gender || null
+    modelLocal.profilePhoto = v.profilePhoto || null
+    modelLocal.cooperativeId = v.cooperativeId || null
+    modelLocal.active = typeof v.active === 'boolean' ? v.active : true
+    modelLocal.password = ''
+    if (props.fixedRole) {
+      modelLocal.role = props.fixedRole
+    }
+    // Campos de conductor
+    const vm: any = v as any
+    modelLocal.licenseNumber = vm.licenseNumber || ''
+    modelLocal.licenseType = vm.licenseType || null
+    modelLocal.issueDate = vm.issueDate ? new Date(vm.issueDate) : null
+    modelLocal.expirationDate = vm.expirationDate ? new Date(vm.expirationDate) : null
+    console.log('[UserForm] Model synced on open:', {
+      birthDate: modelLocal.birthDate,
+      gender: modelLocal.gender,
+      licenseNumber: modelLocal.licenseNumber,
+      licenseType: modelLocal.licenseType,
+      issueDate: modelLocal.issueDate,
+      expirationDate: modelLocal.expirationDate
+    })
+  } else if (isVisible && !props.model) {
+    // Crear nuevo: aplicar fixedRole y cooperativeId si están definidos
+    resetForm()
+    if (props.fixedRole) {
+      modelLocal.role = props.fixedRole
+    }
+    if (props.cooperativeId) {
+      modelLocal.cooperativeId = props.cooperativeId
+    }
+  }
+})
 
 function onCancel() {
   emit('cancel')
@@ -688,12 +761,15 @@ function validate(): boolean {
   const idCardValue = modelLocal.idCard?.trim() || ''
   if (!idCardValue) {
     errors.idCard = 'La cedula es obligatoria'
+    notifyError('La cédula es obligatoria')
     isValid = false
   } else if (!/^\d{10}$/.test(idCardValue)) {
     errors.idCard = 'La cedula debe tener 10 digitos numericos'
+    notifyError('La cédula debe tener 10 dígitos numéricos')
     isValid = false
   } else if (!isValidEcuadorianId(idCardValue)) {
     errors.idCard = 'La cedula ecuatoriana no es valida'
+    notifyError('La cédula ecuatoriana no es válida')
     isValid = false
   }
 
@@ -713,7 +789,7 @@ function validate(): boolean {
     errors.phone = 'El telefono es obligatorio'
     isValid = false
   } else if (!phoneRegex.test(phoneValue)) {
-    errors.phone = 'Formato de telefono invalido (+593999999999)'
+    errors.phone = 'El teléfono debe tener exactamente 10 dígitos'
     isValid = false
   }
 
@@ -767,6 +843,14 @@ function validate(): boolean {
     }
   }
 
+  // Mostrar toast con el primer error encontrado (excepto cédula que ya tiene su propio toast)
+  if (!isValid && !errors.idCard) {
+    const firstError = Object.entries(errors).find(([_, v]) => v && v !== '')
+    if (firstError) {
+      notifyError(firstError[1] as string)
+    }
+  }
+
   return isValid
 }
 
@@ -816,18 +900,9 @@ function toCreatePayload() : CreateUserPayload {
     payload.cooperativeId = authStore.user?.cooperativeId || modelLocal.cooperativeId
   }
 
-  // Agregar campos de conductor si el rol es DRIVER
-  if (modelLocal.role === 'DRIVER') {
-    if (modelLocal.licenseNumber?.trim()) {
-      payload.licenseNumber = modelLocal.licenseNumber.trim()
-    }
-    if (modelLocal.licenseType) {
-      payload.licenseType = modelLocal.licenseType
-    }
-    if (modelLocal.licenseExpiry) {
-      payload.licenseExpiry = modelLocal.licenseExpiry.toISOString().split('T')[0]
-    }
-  }
+  // NOTA: Los campos de licencia (licenseNumber, licenseType, issueDate, expirationDate)
+  // NO se incluyen aquí porque el endpoint /api/usuarios no los acepta.
+  // Estos campos se manejan por separado en buildDriverPayload() para el endpoint de conductores.
 
   return payload as CreateUserPayload
 }
@@ -846,7 +921,7 @@ function toUpdatePayload() : UpdateUserPayload {
   const payload: UpdateUserPayload = {
     firstNames: modelLocal.firstNames?.trim() || undefined,
     lastNames: modelLocal.lastNames?.trim() || undefined,
-    idCard: modelLocal.idCard?.trim() || undefined,
+    // NOTA: idCard no se incluye porque el backend no permite actualizar la cédula
     email: modelLocal.email?.trim() || null,
     phone: modelLocal.phone?.trim() || null,
     birthDate: modelLocal.birthDate ? modelLocal.birthDate.toISOString().split('T')[0] : null,
@@ -855,12 +930,8 @@ function toUpdatePayload() : UpdateUserPayload {
     active: typeof modelLocal.active === 'boolean' ? modelLocal.active : undefined,
   }
 
-  // Agregar campos de conductor si el rol es DRIVER
-  if (modelLocal.role === 'DRIVER') {
-    payload.licenseNumber = modelLocal.licenseNumber?.trim() || null
-    payload.licenseType = modelLocal.licenseType || null
-    payload.licenseExpiry = modelLocal.licenseExpiry ? modelLocal.licenseExpiry.toISOString().split('T')[0] : null
-  }
+  // NOTA: Los campos de licencia NO se incluyen aquí porque el endpoint /api/usuarios no los acepta.
+  // Estos campos se manejan por separado en buildDriverPayload() para el endpoint de conductores.
 
   return payload
 }
@@ -868,8 +939,11 @@ function toUpdatePayload() : UpdateUserPayload {
 function onSubmit() {
   if (!validate()) return
 
+  // Determinar si es un formulario de conductor (por props o por rol seleccionado)
+  const isDriverForm = props.includeDriverFields || props.fixedRole === 'DRIVER' || modelLocal.role === 'DRIVER'
+
   if (isCreate.value) {
-    if (props.includeDriverFields || props.fixedRole === 'DRIVER') {
+    if (isDriverForm) {
       // Emitir objeto combinado: { user, driver }
       emit('submit', { user: toCreatePayload(), driver: buildDriverPayload() })
     } else {
@@ -877,7 +951,7 @@ function onSubmit() {
     }
   } else {
     // Para actualización, emitir payload de usuario; si hay campos de conductor, incluirlos también
-    if (props.includeDriverFields || props.fixedRole === 'DRIVER') {
+    if (isDriverForm) {
       emit('submit', { user: toUpdatePayload(), driver: buildDriverPayload() })
     } else {
       emit('submit', toUpdatePayload())

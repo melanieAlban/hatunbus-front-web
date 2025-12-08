@@ -107,17 +107,7 @@
           </div>
         </div>
 
-        <!-- Remember & Forgot -->
-        <div class="row between">
-          <label class="remember">
-            <input type="checkbox" v-model="remember" class="custom-checkbox" />
-            <span class="checkmark"></span>
-            Recuérdame
-          </label>
-          <a class="muted" href="#" @click.prevent="onForgot"
-            >¿Olvidaste tu contraseña?</a
-          >
-        </div>
+        
 
         <!-- Error Message -->
         <div v-if="error" class="error">{{ error }}</div>
@@ -166,7 +156,12 @@ const selectedRoleLabel = computed(() => {
 
 onMounted(() => {
   if (auth.isAuthenticated) {
-    router.push('/admin')
+    const userRole = (auth.user as any)?.role?.toUpperCase()
+    if (userRole === 'ADMIN') {
+      router.push('/admin/cooperatives')
+    } else {
+      router.push('/admin')
+    }
   }
 
   // Cerrar dropdown al hacer clic fuera
@@ -196,9 +191,18 @@ async function onSubmit() {
       throw new Error("No se pudo iniciar sesión con esas credenciales");
     }
 
+    // Determinar la página de inicio según el rol
+    const userRole = (auth.user as any)?.role?.toUpperCase()
+    let defaultRedirect = '/admin'
+    
+    if (userRole === 'ADMIN') {
+      // ADMIN no tiene acceso a dashboard, redirigir a cooperativas
+      defaultRedirect = '/admin/cooperatives'
+    }
+
     // Si hay un parámetro `redirect` lo respetamos (por ejemplo requests protegidas),
-    // si no, redirigimos al layout general del panel `/admin`.
-    const redirect = (route.query.redirect as string) || '/admin'
+    // si no, redirigimos según el rol
+    const redirect = (route.query.redirect as string) || defaultRedirect
     await router.push(redirect)
   } catch (e: any) {
     error.value =

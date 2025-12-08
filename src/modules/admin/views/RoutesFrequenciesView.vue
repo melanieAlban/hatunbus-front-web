@@ -150,7 +150,7 @@
         <div class="form-grid">
           <div class="form-field">
             <label>Nombre de la ruta *</label>
-            <InputText v-model="routeForm.name" placeholder="Ej. Guayaquil - Quito" />
+            <InputText v-model="routeForm.name" placeholder="Ej. Guayaquil - Quito" maxlength="70" />
             <small v-if="routeErrors.name" class="field-error">{{ routeErrors.name }}</small>
           </div>
           <div class="form-field">

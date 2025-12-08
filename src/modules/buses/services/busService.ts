@@ -36,6 +36,11 @@ export async function getMaintenanceRecords(busId: string): Promise<MaintenanceR
   return res.data as MaintenanceRecordDto[]
 }
 
+export async function createMaintenanceRecord(busId: string, record: Partial<MaintenanceRecordDto>): Promise<MaintenanceRecordDto> {
+  const res = await apiClient.post(`${BASE}/${busId}/maintenance-records`, record)
+  return res.data as MaintenanceRecordDto
+}
+
 export async function createBus(payload: CreateBusRequest, file?: File): Promise<BusDto> {
   const form = new FormData()
   
@@ -140,6 +145,7 @@ export default {
   getBusById,
   getBusSeats,
   getMaintenanceRecords,
+  createMaintenanceRecord,
   createBus,
   createFromGroup,
   listByGroup,

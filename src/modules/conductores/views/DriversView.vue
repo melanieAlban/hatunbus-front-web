@@ -8,7 +8,7 @@
 
     <DriverList @edit="onEdit" @delete="onDelete" />
 
-    <!-- Modal para crear usuario (reutiliza UserForm) -->
+    <!-- Modal único para crear/editar conductor (reutiliza UserForm) -->
     <UserForm
       :visible="visibleUserForm"
       :model="editingUserModel"
@@ -20,23 +20,13 @@
       @submit="createUser"
       @cancel="onCancelUserForm"
     />
-
-    <!-- Dialog para editar/crear detalles del conductor (DriverForm) -->
-    <Dialog v-model:visible="visibleDriverForm" :modal="true" :style="{ width: '720px' }" @hide="onHideDriverForm">
-      <template #header>
-        <h3>{{ editingDriver ? 'Editar conductor' : 'Crear conductor' }}</h3>
-      </template>
-      <DriverForm :model="editingModel" @submit="onSubmitDriver" @cancel="onHideDriverForm" />
-    </Dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import Button from 'primevue/button'
-import Dialog from 'primevue/dialog'
 import DriverList from '../components/DriverList.vue'
-import DriverForm from '../components/DriverForm.vue'
 import UserForm from '../../users-coop/components/UserForm.vue'
 import { useDriverStore } from '../store/useDriverStore'
 import * as driverService from '../services/driverService'
@@ -50,9 +40,6 @@ const coopStore = useCooperativeStore()
 const cooperatives = ref<any[]>([])
 
 const visibleUserForm = ref(false)
-const visibleDriverForm = ref(false)
-const editingDriver = ref(false)
-const editingModel = ref(null as any)
 // Nuevo: edición usando el UserForm
 const editingUser = ref(false)
 const editingUserModel = ref(null as any)
@@ -101,37 +88,57 @@ const allowedRoles = [
 
 async function onEdit(item: any) {
   // Cuando editamos un conductor, abrir el UserForm (que ahora incluye campos de conductor)
+  console.log('[DriversView] onEdit - item received:', JSON.parse(JSON.stringify(item)))
   try {
     editingUser.value = true
     editingDriverId.value = item.id
 
+    // Obtener datos completos del conductor desde el backend (para tener licenseNumber, etc.)
+    let driverData: any = null
+    try {
+      driverData = await store.fetchById(item.id)
+      console.log('[DriversView] driverData fetched:', JSON.parse(JSON.stringify(driverData)))
+    } catch (e) {
+      console.log('[DriversView] driverData fetch failed, using item:', e)
+      driverData = item
+    }
+
     // Obtener datos completos del usuario si es posible
     let userModel: any = null
     try {
-      userModel = await userStore.fetchById(item.userId)
+      userModel = await userStore.fetchById(driverData.userId || item.userId)
+      console.log('[DriversView] userModel fetched:', JSON.parse(JSON.stringify(userModel)))
     } catch (e) {
+      console.log('[DriversView] userModel fetch failed, building partial model')
       // Si falla fetch, construir un modelo parcial desde el item
       userModel = {
-        id: item.userId,
-        firstNames: (item.userName || '').split(' ').slice(0, -1).join(' '),
-        lastNames: (item.userName || '').split(' ').slice(-1).join(' '),
+        id: driverData.userId || item.userId,
+        firstNames: (driverData.userName || item.userName || '').split(' ').slice(0, -1).join(' '),
+        lastNames: (driverData.userName || item.userName || '').split(' ').slice(-1).join(' '),
         email: item.email || null,
         phone: item.phone || null,
         role: 'DRIVER',
-        cooperativeId: item.cooperativeId || null,
-        active: typeof item.active === 'boolean' ? item.active : true,
+        cooperativeId: driverData.cooperativeId || item.cooperativeId || null,
+        active: typeof driverData.active === 'boolean' ? driverData.active : true,
       }
     }
 
+    // Crear copia plana del userModel para evitar problemas con Proxy
+    const userCopy = userModel ? JSON.parse(JSON.stringify(userModel)) : {}
+    
     // Añadir campos de driver al modelo para que UserForm los muestre
-    const combined = Object.assign({}, userModel, {
-      licenseNumber: item.licenseNumber || '',
-      licenseType: item.licenseType || null,
-      issueDate: item.issueDate || null,
-      expirationDate: item.expirationDate || null,
-      cooperativeId: item.cooperativeId || userModel?.cooperativeId || null,
-    })
+    // Los campos del driver deben sobrescribir cualquier valor del usuario
+    const combined = {
+      ...userCopy,
+      // Campos específicos del conductor (del DriverDto obtenido del backend)
+      licenseNumber: driverData.licenseNumber || '',
+      licenseType: driverData.licenseType || null,
+      issueDate: driverData.issueDate || null,
+      expirationDate: driverData.expirationDate || null,
+      cooperativeId: driverData.cooperativeId || userCopy.cooperativeId || null,
+    }
 
+    console.log('[DriversView] combined model for UserForm:', combined)
     editingUserModel.value = combined
     // Abrir modal de UserForm en modo edición con role fijo
     visibleUserForm.value = true
@@ -164,29 +171,6 @@ async function onDelete(item: any) {
     success('Conductor eliminado', fullName)
   } catch (e: any) {
     notifyError('Error', e?.response?.data?.message || e?.message || 'No se pudo eliminar')
-  }
-}
-
-function onHideDriverForm() {
-  visibleDriverForm.value = false
-}
-
-function onHide() {
-  visibleUserForm.value = false
-}
-
-async function onSubmitDriver(payload: any) {
-  try {
-    if (editingModel.value?.id) {
-      await store.update(editingModel.value.id, payload)
-    } else {
-      await store.create(payload)
-    }
-    visibleDriverForm.value = false
-    // asegurar que la UI se sincronice con el backend para este driver
-    try { await refreshDriverInStore(editingModel.value?.id || null) } catch (e) {}
-  } catch (e) {
-    // error handled in store
   }
 }
 
@@ -237,7 +221,6 @@ async function createUser(payload: any) {
           const dp: any = driverPayload
           if (editingDriverId.value) {
             console.log('[DriversView] updating driver id', editingDriverId.value, 'payload:', JSON.parse(JSON.stringify({
-              userId: updatedUser.id,
               licenseNumber: dp.licenseNumber,
               licenseType: dp.licenseType,
               issueDate: dp.issueDate,
@@ -246,7 +229,6 @@ async function createUser(payload: any) {
               active: typeof dp.active === 'boolean' ? dp.active : true,
             })))
             await store.update(editingDriverId.value, {
-              userId: updatedUser.id,
               licenseNumber: dp.licenseNumber,
               licenseType: dp.licenseType,
               issueDate: dp.issueDate,
@@ -306,9 +288,8 @@ async function createUser(payload: any) {
             } else {
               // si fue reactivado, intentamos actualizar el campo active en el conductor
               await store.update(editingDriverId.value, {
-                userId: updatedUser.id,
                 active: true,
-              } as any)
+              })
             }
             // Asegurar que la UI refleje el estado real del backend
             await refreshDriverInStore(editingDriverId.value)
@@ -331,7 +312,6 @@ async function createUser(payload: any) {
     }
 
     const created = await userStore.create(userPayload)
-    visibleUserForm.value = false
 
     // Si viene driverPayload, crear el driver asociado automáticamente
     if (driverPayload) {
@@ -343,50 +323,30 @@ async function createUser(payload: any) {
         licenseType: dp?.licenseType || null,
         issueDate: dp?.issueDate || null,
         expirationDate: dp?.expirationDate || null,
-        active: typeof dp?.active === 'boolean' ? dp.active : (typeof (created as any).active === 'boolean' ? (created as any).active : true),
       }
+      console.log('[DriversView] Creating driver with payload:', JSON.stringify(newDriver))
       try {
         await store.create(newDriver)
         success('Conductor creado', created.firstNames ? `${created.firstNames} ${created.lastNames}` : '')
         // refrescar lista para asegurar que la tabla muestre el cambio
         try { const coopId2 = dp.cooperativeId || (created as any).cooperativeId || userPayload.cooperativeId || null; if (coopId2) await store.fetchByCooperative(coopId2) } catch (e) {}
-      } catch (e) {
-        // Si falla la creación del driver, abrir el DriverForm para permitir completar manualmente
-        const dp2: any = driverPayload
-        editingModel.value = {
-          userId: (created as any).id,
-          cooperativeId: newDriver.cooperativeId,
-          licenseNumber: dp2?.licenseNumber || '',
-          licenseType: dp2?.licenseType || null,
-          issueDate: dp2?.issueDate || null,
-          expirationDate: dp2?.expirationDate || null,
-        }
-        visibleDriverForm.value = true
+      } catch (e: any) {
+        // Si falla la creación del driver, mostrar error
+        notifyError('Error', e?.response?.data?.message || e?.message || 'Error creando conductor')
       }
     } else {
-      // comportamiento anterior: si es role DRIVER, abrir formulario para completar datos
-      if ((created as any).role === 'DRIVER' || userPayload.role === 'DRIVER') {
-        editingModel.value = {
-          userId: (created as any).id,
-          cooperativeId: (created as any).cooperativeId || userPayload.cooperativeId || null,
-          licenseNumber: '',
-          licenseType: null,
-          issueDate: null,
-          expirationDate: null,
-          // active: true, // Removed as per the requirement
-        }
-        editingDriver.value = false
-        visibleDriverForm.value = true
-        success('Usuario creado', `${created.firstNames || ''} ${created.lastNames || ''}`.trim())
-      }
+      success('Usuario creado', `${created.firstNames || ''} ${created.lastNames || ''}`.trim())
     }
+    
+    visibleUserForm.value = false
+    editingUser.value = false
+    editingUserModel.value = null
+    editingDriverId.value = null
   } catch (e) {
     const err: any = e
     notifyError('Error', err?.response?.data?.message || err?.message || 'Error creando usuario/conductor')
   }
 }
-
-// Nota: la vista no carga por defecto hasta que se invoque fetch desde un padre o se agregue lógica
 </script>
 
 <style scoped>

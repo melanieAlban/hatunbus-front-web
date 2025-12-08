@@ -66,8 +66,10 @@ export async function fetchTripsByDateRange(startDate: string, endDate: string):
   return data
 }
 
-export async function fetchCompletedTrips(): Promise<TripSummaryDto[]> {
-  const { data } = await apiClient.get('/viajes/completados')
+export async function fetchCompletedTrips(cooperativeId?: string): Promise<TripSummaryDto[]> {
+  const params: any = {}
+  if (cooperativeId) params.cooperativaId = cooperativeId
+  const { data } = await apiClient.get('/viajes/completados', { params })
   return data
 }
 
