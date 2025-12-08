@@ -82,6 +82,7 @@ import Button from 'primevue/button'
 import Checkbox from 'primevue/checkbox'
 import Dropdown from 'primevue/dropdown'
 import type { DriverDto, CreateDriverPayload } from '../interfaces/driver.interface'
+import { error as notifyError } from '@/lib/notifier'
 
 const props = defineProps<{ model?: DriverDto }>()
 const emit = defineEmits<{
@@ -183,6 +184,14 @@ function validate(): boolean {
     if (expirationDate <= issueDate) {
       errors.expirationDate = 'La fecha de vencimiento debe ser posterior a la emision'
       isValid = false
+    }
+  }
+
+  // Mostrar toast con el primer error encontrado
+  if (!isValid) {
+    const firstError = Object.entries(errors).find(([_, v]) => v && v !== '')
+    if (firstError) {
+      notifyError('Campo inválido', firstError[1] as string)
     }
   }
 

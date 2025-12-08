@@ -37,11 +37,6 @@
                   <Dropdown v-model="filters.licenseType" :options="licenseTypeOptions" placeholder="Todos" class="filter-dropdown" optionLabel="label" optionValue="value" @change="onFilterChange" showClear />
                 </div>
               </th>
-              <th class="table-head buses-column">
-                <div class="header-filter">
-                  <span>Buses asignados</span>
-                </div>
-              </th>
               <th class="table-head state-column">
                 <div class="header-filter">
                   <span>Estado</span>
@@ -70,9 +65,6 @@
               </td>
               <td class="table-cell type-cell">
                 <span class="role-text">{{ d.licenseType || '-' }}</span>
-              </td>
-              <td class="table-cell buses-cell">
-                <span class="email-text">{{ ((d as any).assignedBuses && (d as any).assignedBuses.length) || '-' }}</span>
               </td>
               <td class="table-cell state-cell">
                 <span :class="['status-badge', d.active ? 'status-active' : 'status-inactive']">

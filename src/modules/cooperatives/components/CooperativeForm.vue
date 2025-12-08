@@ -112,6 +112,7 @@ import ColorPicker from 'primevue/colorpicker'
 import Checkbox from 'primevue/checkbox'
 import type { CreateCooperativePayload, CooperativeDto } from '../interfaces/cooperative.interface'
 import { onMounted, onBeforeUnmount } from 'vue'
+import { error as notifyError } from '@/lib/notifier'
 
 const props = defineProps<{ model?: CooperativeDto; visible?: boolean }>()
 // Emit payload and optionally the original File when present (for multipart uploads)
@@ -258,7 +259,17 @@ function validate(): boolean {
     ? 'Formato de color invalido (#RRGGBB)'
     : null
 
-  return Object.values(errors).every(v => v === null)
+  const isValid = Object.values(errors).every(v => v === null)
+  
+  // Mostrar toast con el primer error encontrado
+  if (!isValid) {
+    const firstError = Object.entries(errors).find(([_, v]) => v !== null)
+    if (firstError) {
+      notifyError('Campo inválido', firstError[1] as string)
+    }
+  }
+  
+  return isValid
 }
 
 function onFileSelected(event: any) {

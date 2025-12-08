@@ -843,6 +843,14 @@ function validate(): boolean {
     }
   }
 
+  // Mostrar toast con el primer error encontrado (excepto cédula que ya tiene su propio toast)
+  if (!isValid && !errors.idCard) {
+    const firstError = Object.entries(errors).find(([_, v]) => v && v !== '')
+    if (firstError) {
+      notifyError(firstError[1] as string)
+    }
+  }
+
   return isValid
 }
 

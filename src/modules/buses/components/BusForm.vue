@@ -106,7 +106,8 @@
         <div class="form-row">
           <div class="form-group">
               <label class="p-label">Template *</label>
-              <div v-if="props.fixedTemplateId">
+              <!-- Mostrar template bloqueado si es edición o tiene fixedTemplateId -->
+              <div v-if="props.fixedTemplateId || !isCreate">
                 <div class="fixed-template-display" style="display:flex;flex-direction:column;gap:0.5rem">
                   <div style="font-weight:600">{{ selectedTemplate?.name || 'Cargando template...' }}</div>
                   <div style="display:flex;gap:1rem;align-items:center">
@@ -122,7 +123,9 @@
                     </div>
                   </div>
                 </div>
+                <small class="field-hint" v-if="!isCreate">El template no se puede cambiar después de crear el bus</small>
               </div>
+              <!-- Dropdown solo para crear nuevo bus sin fixedTemplateId -->
               <div v-else>
                 <Dropdown
                   v-model="modelLocal.busTemplateId"
@@ -136,7 +139,7 @@
                 />
               </div>
               <small v-if="errors.busTemplateId" class="p-error">{{ errors.busTemplateId }}</small>
-              <small class="field-hint">El plano y número de asientos se obtienen del template</small>
+              <small class="field-hint" v-if="isCreate && !props.fixedTemplateId">El plano y número de asientos se obtienen del template</small>
             </div>
 
           <div class="form-group">
@@ -156,7 +159,7 @@
 
         <!-- Preview + Conductor en la misma fila -->
         <div class="form-row">
-          <div class="form-group" v-if="!props.fixedTemplateId">
+          <div class="form-group" v-if="!props.fixedTemplateId && isCreate">
             <label class="p-label">Previsualización</label>
             <BusTemplatePreview
               :seatConfiguration="selectedTemplate?.seatConfiguration"
@@ -225,30 +228,60 @@
           </div>
         </div>
 
-        <!-- Sección de mantenimiento (solo para editar) -->
-        <div v-if="!isCreate" class="maintenance-section">
+        <!-- Sección de mantenimiento (solo cuando estado es MAINTENANCE) -->
+        <div v-if="!isCreate && modelLocal.status === BusStatus.MAINTENANCE" class="maintenance-section">
           <div class="section-divider">
             <i class="pi pi-wrench"></i>
-            <span>Información de Mantenimiento</span>
+            <span>Registrar Mantenimiento</span>
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label class="p-label">Kilómetros Totales</label>
+              <label class="p-label">Kilómetros Actuales *</label>
               <InputNumber 
                 v-model="modelLocal.totalKilometers" 
                 :min="0" 
                 :maxFractionDigits="2"
                 placeholder="0.00"
                 class="w-full"
+                :class="{ 'p-invalid': errors.totalKilometers }"
               />
-              <small class="field-hint">Kilometraje acumulado del bus</small>
+              <small v-if="errors.totalKilometers" class="p-error">{{ errors.totalKilometers }}</small>
+              <small class="field-hint">Kilometraje al momento del mantenimiento</small>
+            </div>
+
+            <div class="form-group">
+              <label class="p-label">Tipo de Mantenimiento *</label>
+              <Dropdown
+                v-model="maintenanceRecord.maintenanceType"
+                :options="maintenanceTypeOptions"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Seleccionar tipo"
+                class="w-full"
+                :class="{ 'p-invalid': errors.maintenanceType }"
+              />
+              <small v-if="errors.maintenanceType" class="p-error">{{ errors.maintenanceType }}</small>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="p-label">Fecha del Mantenimiento</label>
+              <Calendar
+                v-model="maintenanceRecord.maintenanceDate"
+                dateFormat="yy-mm-dd"
+                showIcon
+                :maxDate="new Date()"
+                placeholder="Seleccionar fecha"
+                class="w-full"
+              />
             </div>
 
             <div class="form-group">
               <label class="p-label">Próximo Mantenimiento (km)</label>
               <InputNumber 
-                v-model="modelLocal.nextMaintenanceKm" 
+                v-model="maintenanceRecord.nextMaintenanceKm" 
                 :min="0" 
                 :maxFractionDigits="2"
                 placeholder="0.00"
@@ -259,13 +292,35 @@
 
           <div class="form-row">
             <div class="form-group">
-              <label class="p-label">Fecha Último Mantenimiento</label>
-              <Calendar
-                v-model="modelLocal.lastMaintenanceDate"
-                dateFormat="yy-mm-dd"
-                showIcon
-                :maxDate="new Date()"
-                placeholder="Seleccionar fecha"
+              <label class="p-label">Descripción</label>
+              <InputText 
+                v-model="maintenanceRecord.description" 
+                placeholder="Descripción del trabajo realizado"
+                class="w-full"
+              />
+            </div>
+
+            <div class="form-group">
+              <label class="p-label">Taller</label>
+              <InputText 
+                v-model="maintenanceRecord.workshop" 
+                placeholder="Nombre del taller"
+                class="w-full"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="p-label">Costo</label>
+              <InputNumber 
+                v-model="maintenanceRecord.cost" 
+                :min="0" 
+                :maxFractionDigits="2"
+                mode="currency"
+                currency="USD"
+                locale="en-US"
+                placeholder="0.00"
                 class="w-full"
               />
             </div>
@@ -357,6 +412,7 @@ import { useAuthStore } from '../../auth/store/useAuthStore'
 import type { DriverDto } from '../../conductores/interfaces/driver.interface'
 import driverService from '../../conductores/services/driverService'
 import busService from '../services/busService'
+import { error as notifyError } from '@/lib/notifier'
 
 type DriverOption = {
   id: string
@@ -373,7 +429,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'submit', payload: CreateBusRequest | UpdateBusPayload, file?: File): void
+  (e: 'submit', payload: CreateBusRequest | UpdateBusPayload, file?: File, maintenanceData?: any): void
   (e: 'cancel'): void
   (e: 'update:visible', v: boolean): void
 }>()
@@ -385,12 +441,8 @@ const authStore = useAuthStore()
 const isCooperative = computed(() => authStore.user?.role === 'COOPERATIVE')
 const driverOptions = ref<DriverOption[]>([])
 const loadingDrivers = ref(false)
-const availableDriverOptions = computed(() => {
-  return driverOptions.value.filter(option => {
-    if (!option.assignedBusId) return true
-    return props.model?.id && option.assignedBusId === props.model.id
-  })
-})
+// Mostrar todos los conductores cargados - el filtro se hace en loadDriversByCooperative
+const availableDriverOptions = computed(() => driverOptions.value)
 
 // React to changes on fixedTemplateId (in case the component is reused)
 watch(() => props.fixedTemplateId, async (newId) => {
@@ -407,11 +459,48 @@ watch(() => props.fixedTemplateId, async (newId) => {
   }
 })
 
+// Watch para recargar el fixedTemplateId cuando el modal se abre
+watch(() => props.visible, async (isVisible) => {
+  if (isVisible && props.fixedTemplateId) {
+    try {
+      const found = availableTemplates.value.find(t => t.id === props.fixedTemplateId)
+      if (!found) {
+        const tpl = await templateService.getById(props.fixedTemplateId)
+        if (tpl) availableTemplates.value.unshift(tpl)
+      }
+      modelLocal.busTemplateId = props.fixedTemplateId
+    } catch (e) {
+      console.warn('[BusForm] Could not load fixed template on open', props.fixedTemplateId, e)
+    }
+  }
+})
+
 const statusOptions = ref([
   { label: 'Activo', value: BusStatus.ACTIVE },
   { label: 'Inactivo', value: BusStatus.INACTIVE },
   { label: 'Mantenimiento', value: BusStatus.MAINTENANCE }
 ])
+
+const maintenanceTypeOptions = ref([
+  { label: 'Preventivo', value: 'PREVENTIVO' },
+  { label: 'Correctivo', value: 'CORRECTIVO' },
+  { label: 'Revisión Técnica', value: 'REVISION_TECNICA' },
+  { label: 'Cambio de Aceite', value: 'CAMBIO_ACEITE' },
+  { label: 'Cambio de Frenos', value: 'CAMBIO_FRENOS' },
+  { label: 'Cambio de Llantas', value: 'CAMBIO_LLANTAS' },
+  { label: 'Reparación General', value: 'REPARACION_GENERAL' },
+  { label: 'Otro', value: 'OTRO' }
+])
+
+// Registro de mantenimiento para cuando el bus entra a MAINTENANCE
+const maintenanceRecord = reactive({
+  maintenanceType: null as string | null,
+  maintenanceDate: new Date(),
+  description: null as string | null,
+  cost: null as number | null,
+  workshop: null as string | null,
+  nextMaintenanceKm: null as number | null
+})
 
 const isCreate = computed(() => !props.model)
 
@@ -621,19 +710,43 @@ watch(() => props.model, async (v) => {
     modelLocal.chassisNumber = v.chassisNumber || null
     modelLocal.bodyBrand = v.bodyBrand || ''
     modelLocal.bodyNumber = v.bodyNumber || null
+    modelLocal.seatCount = v.seatCount || null
     modelLocal.status = v.status || BusStatus.ACTIVE
     modelLocal.cooperativeId = v.cooperativeId || null
     modelLocal.driverId = v.driverId || null
     modelLocal.totalKilometers = v.totalKilometers || null
     modelLocal.lastMaintenanceDate = v.lastMaintenanceDate ? new Date(v.lastMaintenanceDate) : null
     modelLocal.nextMaintenanceKm = v.nextMaintenanceKm || null
-    modelLocal.photo = v.photo || null
+    
+    // Procesar la foto - agregar prefijo data:image si es necesario
+    if (v.photo) {
+      if (typeof v.photo === 'string' && v.photo.startsWith('data:')) {
+        modelLocal.photo = v.photo
+      } else if (typeof v.photo === 'string') {
+        // Asumir que es base64 sin prefijo
+        modelLocal.photo = `data:image/png;base64,${v.photo}`
+      } else {
+        modelLocal.photo = null
+      }
+    } else {
+      modelLocal.photo = null
+    }
+    
     // busTemplateId might come from v.busTemplateId
     // @ts-ignore
     modelLocal.busTemplateId = (v as any).busTemplateId || null
-    ensureCurrentDriverOption()
+    
+    // Recargar conductores con el contexto del bus actual para mostrar todos los disponibles
+    if (v.cooperativeId) {
+      await loadDriversByCooperative(v.cooperativeId)
+    }
   } else {
     resetForm()
+    // Al crear nuevo bus, recargar conductores disponibles (sin ninguno asignado)
+    const coopId = modelLocal.cooperativeId || authStore.user?.cooperativeId || null
+    if (coopId) {
+      await loadDriversByCooperative(coopId)
+    }
   }
 }, { immediate: true })
 
@@ -656,6 +769,14 @@ function resetForm() {
   driverOptions.value = []
   seatLayout.value = []
   modelLocal.busTemplateId = null
+
+  // Limpiar registro de mantenimiento
+  maintenanceRecord.maintenanceType = null
+  maintenanceRecord.maintenanceDate = new Date()
+  maintenanceRecord.description = null
+  maintenanceRecord.cost = null
+  maintenanceRecord.workshop = null
+  maintenanceRecord.nextMaintenanceKm = null
 
   // Limpiar errores
   Object.keys(errors).forEach(key => {
@@ -763,6 +884,26 @@ function validate(): boolean {
 
   // Driver optional when creating a bus
 
+  // Validaciones de mantenimiento cuando el estado es MAINTENANCE
+  if (!isCreate.value && modelLocal.status === BusStatus.MAINTENANCE) {
+    if (modelLocal.totalKilometers == null || modelLocal.totalKilometers <= 0) {
+      errors.totalKilometers = 'Debe ingresar el kilometraje actual'
+      isValid = false
+    }
+    if (!maintenanceRecord.maintenanceType) {
+      errors.maintenanceType = 'Debe seleccionar el tipo de mantenimiento'
+      isValid = false
+    }
+  }
+
+  // Mostrar toast con el primer error encontrado
+  if (!isValid) {
+    const firstError = Object.entries(errors).find(([_, v]) => v && v !== '')
+    if (firstError) {
+      notifyError('Campo inválido', firstError[1] as string)
+    }
+  }
+
   return isValid
 }
 
@@ -834,7 +975,24 @@ function onSubmit() {
   if (isCreate.value) {
     emit('submit', toCreatePayload(), photoFile.value || undefined)
   } else {
-    emit('submit', toUpdatePayload(), photoFile.value || undefined)
+    // Si el estado es MAINTENANCE, incluir los datos del registro de mantenimiento
+    let maintenanceData: any = null
+    if (modelLocal.status === BusStatus.MAINTENANCE && maintenanceRecord.maintenanceType) {
+      maintenanceData = {
+        maintenanceType: maintenanceRecord.maintenanceType,
+        maintenanceDate: maintenanceRecord.maintenanceDate 
+          ? (maintenanceRecord.maintenanceDate instanceof Date 
+              ? maintenanceRecord.maintenanceDate.toISOString().split('T')[0]
+              : maintenanceRecord.maintenanceDate)
+          : new Date().toISOString().split('T')[0],
+        kilometersAtMaintenance: modelLocal.totalKilometers,
+        description: maintenanceRecord.description,
+        cost: maintenanceRecord.cost,
+        workshop: maintenanceRecord.workshop,
+        nextMaintenanceKm: maintenanceRecord.nextMaintenanceKm
+      }
+    }
+    emit('submit', toUpdatePayload(), photoFile.value || undefined, maintenanceData)
   }
 }
 </script>

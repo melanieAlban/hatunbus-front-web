@@ -156,11 +156,13 @@ function validate(): boolean {
   
   if (!formData.value.name?.trim()) {
     errors.value.name = 'El nombre es obligatorio'
+    notifyError('Campo requerido', 'El nombre del template es obligatorio')
+    return false
   }
   
   if (formData.value.seatCount < 10) {
     errors.value.seats = 'Debe configurar al menos 10 asientos'
-    notifyError('Error', 'Debe configurar al menos 10 asientos en el diseño')
+    notifyError('Configuración incompleta', 'Debe configurar al menos 10 asientos en el diseño')
     return false
   }
   

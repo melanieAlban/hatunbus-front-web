@@ -23,7 +23,7 @@
       :model="editing"
       :visible="!!editing"
       @update:visible="val => { if (!val) editing = null }"
-      @submit="(payload, file, driverId) => update(payload as UpdateBusPayload, file, driverId)"
+      @submit="(payload, file, maintenanceData) => update(payload as UpdateBusPayload, file, maintenanceData)"
       @cancel="() => (editing = null)"
     />
 
@@ -83,7 +83,7 @@ function onEdit(item: BusDto) {
   editing.value = item
 }
 
-async function update(payload: UpdateBusPayload, file?: File, driverId?: string | null) {
+async function update(payload: UpdateBusPayload, file?: File, maintenanceData?: any) {
   if (!editing.value?.id) return
   try {
     let updated: BusDto | null = null
@@ -97,12 +97,12 @@ async function update(payload: UpdateBusPayload, file?: File, driverId?: string 
       updated = await store.update(editing.value.id, payload)
     }
 
-    // If a driver was selected, assign it
-    if (updated && driverId) {
+    // Si hay datos de mantenimiento, crear el registro
+    if (updated && maintenanceData) {
       try {
-        await service.assignDriver(updated.id, driverId)
-      } catch (errAssign) {
-        console.warn('[BusesView] could not assign driver after update', errAssign)
+        await service.createMaintenanceRecord(updated.id, maintenanceData)
+      } catch (errMaint) {
+        console.warn('[BusesView] could not create maintenance record', errMaint)
       }
     }
 
