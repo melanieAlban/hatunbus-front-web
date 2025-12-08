@@ -36,6 +36,7 @@ import UserForm from '../components/UserForm.vue'
 import { useUserStore } from '../store/useUserStore'
 import { useCooperativeStore } from '../../cooperatives/store/useCooperativeStore'
 import * as service from '../services/userService'
+import * as driverService from '../../conductores/services/driverService'
 import { confirm, success, error as notifyError } from '../../../lib/notifier'
 
 const store = useUserStore()
@@ -81,25 +82,92 @@ async function onCooperativeChange(id: string | null) {
 
 async function create(payload: any) {
   try {
-    await store.create(payload)
-    showCreate.value = false
-    success('Usuario creado', payload.name || '')
+    // Si el payload tiene estructura { user, driver }, es un DRIVER con datos de licencia
+    if (payload.user && payload.driver) {
+      // Paso 1: Crear el usuario
+      const createdUser = await store.create(payload.user)
+      console.log('[UsersCoopView] Usuario DRIVER creado:', createdUser)
+      
+      // Paso 2: Crear el conductor con los datos de licencia
+      const driverPayload = {
+        userId: createdUser.id,
+        cooperativeId: payload.driver.cooperativeId || payload.user.cooperativeId,
+        licenseNumber: payload.driver.licenseNumber,
+        licenseType: payload.driver.licenseType,
+        issueDate: payload.driver.issueDate,
+        expirationDate: payload.driver.expirationDate,
+      }
+      console.log('[UsersCoopView] Creando conductor con payload:', driverPayload)
+      await driverService.createDriver(driverPayload)
+      
+      showCreate.value = false
+      success('Conductor creado', `${createdUser.firstNames} ${createdUser.lastNames}`)
+    } else {
+      // Crear usuario normal (no DRIVER o sin campos de licencia)
+      await store.create(payload)
+      showCreate.value = false
+      success('Usuario creado', payload.firstNames || '')
+    }
   } catch (e) {
     const err: any = e
     notifyError('Error', err?.response?.data?.message || err?.message || 'Error creando usuario')
   }
 }
 
-function onEdit(item: any) {
-  editing.value = item
+async function onEdit(item: any) {
+  // Si el usuario es DRIVER, obtener también los datos del conductor (licencia, fechas, etc.)
+  if (item.role === 'DRIVER') {
+    try {
+      const driverData = await driverService.getDriverByUserId(item.id)
+      console.log('[UsersCoopView] Driver data fetched for user:', driverData)
+      // Combinar datos del usuario con datos del conductor
+      editing.value = {
+        ...item,
+        licenseNumber: driverData.licenseNumber || '',
+        licenseType: driverData.licenseType || null,
+        issueDate: driverData.issueDate || null,
+        expirationDate: driverData.expirationDate || null,
+        driverId: driverData.id, // Guardar el ID del driver para actualizaciones
+      }
+    } catch (e) {
+      console.warn('[UsersCoopView] Could not fetch driver data, using user only:', e)
+      editing.value = item
+    }
+  } else {
+    editing.value = item
+  }
 }
 
 async function update(payload: any) {
   if (!editing.value?.id) return
   try {
-    await store.update(editing.value.id, payload)
-    editing.value = null
-    success('Usuario actualizado', payload.name || '')
+    // Si el payload tiene estructura { user, driver }, es un DRIVER con datos de licencia
+    if (payload.user && payload.driver) {
+      // Paso 1: Actualizar el usuario
+      await store.update(editing.value.id, payload.user)
+      console.log('[UsersCoopView] Usuario DRIVER actualizado')
+      
+      // Paso 2: Actualizar el conductor si existe driverId
+      if (editing.value.driverId) {
+        const driverPayload = {
+          licenseNumber: payload.driver.licenseNumber,
+          licenseType: payload.driver.licenseType,
+          issueDate: payload.driver.issueDate,
+          expirationDate: payload.driver.expirationDate,
+          cooperativeId: payload.driver.cooperativeId,
+        }
+        console.log('[UsersCoopView] Actualizando conductor con payload:', driverPayload)
+        await driverService.updateDriver(editing.value.driverId, driverPayload)
+      }
+      
+      editing.value = null
+      success('Conductor actualizado', `${payload.user.firstNames || ''} ${payload.user.lastNames || ''}`.trim())
+    } else {
+      // Actualizar usuario normal
+      await store.update(editing.value.id, payload)
+      editing.value = null
+      success('Usuario actualizado', payload.firstNames || '')
+    }
   } catch (e) {
     const err: any = e
     notifyError('Error', err?.response?.data?.message || err?.message || 'Error actualizando usuario')

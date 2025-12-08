@@ -26,6 +26,7 @@
               id="templateName"
               v-model="formData.name"
               placeholder="Ej: Premium 36 con baño"
+              maxlength="70"
               :class="{ 'p-invalid': errors.name }"
             />
             <small v-if="errors.name" class="p-error">{{ errors.name }}</small>
@@ -37,6 +38,7 @@
               id="description"
               v-model="formData.description"
               placeholder="Describe las características del template"
+              maxlength="150"
             />
           </div>
         </div>
@@ -156,11 +158,13 @@ function validate(): boolean {
   
   if (!formData.value.name?.trim()) {
     errors.value.name = 'El nombre es obligatorio'
+    notifyError('Campo requerido', 'El nombre del template es obligatorio')
+    return false
   }
   
   if (formData.value.seatCount < 10) {
     errors.value.seats = 'Debe configurar al menos 10 asientos'
-    notifyError('Error', 'Debe configurar al menos 10 asientos en el diseño')
+    notifyError('Configuración incompleta', 'Debe configurar al menos 10 asientos en el diseño')
     return false
   }
   

@@ -150,11 +150,14 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import Card from 'primevue/card'
 import { Chart, registerables } from 'chart.js'
 import { useCooperativeCustomization } from '../../../composables/useCooperativeCustomization'
-import { fetchDriversReport, fetchCompletedTrips } from '../../../services/reportService'
+import { fetchCompletedTrips } from '../../../services/reportService'
+import { getPurchasesByCooperative } from '../../sales/services/saleService'
+import { useAuthStore } from '../../auth/store/useAuthStore'
 
 Chart.register(...registerables)
 
 const { colors } = useCooperativeCustomization()
+const authStore = useAuthStore()
 
 // Referencias a los canvas
 const revenueExpensesChart = ref<HTMLCanvasElement>()
@@ -193,28 +196,37 @@ async function loadDashboardData() {
   try {
     loading.value = true
     
-    // Cargar reporte de conductores
-    const driversReport = await fetchDriversReport()
-    driversData.value = driversReport.drivers || []
-
-    // Calcular estadísticas generales
-    let totalRevenue = 0
+    const cooperativeId = authStore.user?.cooperativeId
+    
+    // Cargar viajes completados de la cooperativa
+    const trips = await fetchCompletedTrips(cooperativeId)
+    
+    // Calcular estadísticas desde los viajes
     let totalPassengers = 0
-    let totalTrips = 0
+    let totalTrips = trips.length
 
-    driversData.value.forEach(driver => {
-      totalRevenue += driver.totalIncome || 0
-      totalPassengers += driver.totalPassengers || 0
-      totalTrips += driver.totalTrips || 0
+    trips.forEach((trip: any) => {
+      totalPassengers += trip.occupiedSeats || 0
     })
+
+    // Cargar ventas de la cooperativa para calcular ingresos reales
+    let totalRevenue = 0
+    if (cooperativeId) {
+      try {
+        const purchases = await getPurchasesByCooperative(cooperativeId)
+        // Sumar el totalAmount de todas las ventas
+        totalRevenue = purchases.reduce((sum, p) => sum + (p.totalAmount || 0), 0)
+      } catch (err) {
+        console.error('Error al cargar ventas para ingresos:', err)
+      }
+    }
 
     stats.value.totalRevenue = totalRevenue
     stats.value.totalPassengers = totalPassengers
     stats.value.completedTrips = totalTrips
     stats.value.avgOccupancy = totalTrips > 0 ? Math.round((totalPassengers / (totalTrips * 40)) * 100) : 0
 
-    // Cargar viajes recientes
-    const trips = await fetchCompletedTrips()
+    // Viajes recientes (últimos 5)
     recentTrips.value = trips.slice(0, 5).map((trip: any) => ({
       id: trip.id,
       routeName: trip.routeName || 'Sin ruta',

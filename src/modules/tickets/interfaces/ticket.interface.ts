@@ -142,13 +142,18 @@ export interface StopDto {
 export interface RouteDto {
   id: string
   name: string
-  origin: string
-  destination: string
-  distance: number
-  estimatedDuration: number
+  origin?: string
+  destination?: string
+  originCity?: string
+  destinationCity?: string
+  distance?: number
+  distanceKm?: number
+  estimatedDuration?: number
+  estimatedTime?: number
   basePrice: number
   cooperativeId?: string
   isActive?: boolean
+  active?: boolean
 }
 
 export interface BusTemplateInfo {

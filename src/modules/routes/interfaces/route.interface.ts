@@ -57,6 +57,7 @@ export interface FrequencyDto {
   createdAt?: string
   updatedAt?: string
   segments: FrequencySegmentDto[]
+  operatingDays?: string[]
 }
 
 export interface FrequencySegmentPayload {
@@ -70,9 +71,11 @@ export interface CreateFrequencyPayload {
   cooperativeId: string
   regulatoryResolution: string
   segments: FrequencySegmentPayload[]
+  operatingDays?: string[]
 }
 
 export interface UpdateFrequencyPayload {
   regulatoryResolution: string
   segments: FrequencySegmentPayload[]
+  operatingDays?: string[]
 }
