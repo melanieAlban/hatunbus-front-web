@@ -151,9 +151,9 @@
             </div>
           </template>
 
-          <Column field="id" header="ID" :sortable="true">
+          <Column field="id" header="CEDULA" :sortable="true">
             <template #body="{ data }">
-              <span class="id-cell">{{ data.id.substring(0, 8) }}</span>
+              {{ getPassengerIdCards(data.tickets) }}
             </template>
           </Column>
 
@@ -313,6 +313,7 @@ const cancelling = ref(false)
 const statusOptions = [
   { label: 'Todos', value: '' },
   { label: 'Pendiente', value: 'PENDING' },
+  { label: 'Pagada', value: 'PAID' },
   { label: 'Confirmada', value: 'CONFIRMED' },
   { label: 'Cancelada', value: 'CANCELLED' },
   { label: 'Expirada', value: 'EXPIRED' }
@@ -364,33 +365,40 @@ const filteredPurchases = computed(() => {
   return result
 })
 
+// Confirmados = compras con status PAID o CONFIRMED (ambos son ventas pagadas)
 const confirmedCount = computed(() => 
-  filteredPurchases.value.filter(p => p.status === 'CONFIRMED').length
+  filteredPurchases.value.filter(p => 
+    p.status === 'PAID' || p.status === 'CONFIRMED'
+  ).length
 )
 
+// Pendientes = ventas con status PENDING
 const pendingCount = computed(() => 
   filteredPurchases.value.filter(p => p.status === 'PENDING').length
 )
 
+// Ingresos = suma del totalAmount de TODAS las ventas (sin filtrar por estado)
 const totalRevenue = computed(() => 
-  filteredPurchases.value
-    .filter(p => p.status === 'CONFIRMED')
-    .reduce((sum, p) => sum + p.totalAmount, 0)
+  filteredPurchases.value.reduce((sum, p) => sum + p.totalAmount, 0)
 )
 
 async function loadPurchases() {
   loading.value = true
   try {
-    const userId = authStore.user?.id
+    const user = authStore.user
     
-    if (!userId) {
+    if (!user) {
       notifyError('Usuario no autenticado')
       return
     }
     
-    // Todos los usuarios (ADMIN, COOPERATIVE, CLERK) ven sus propias compras
-    // Si es ADMIN y queremos que vea todas, necesitaríamos un endpoint diferente en el backend
-    await saleStore.fetchPurchasesByUser(userId)
+    // Si es COOPERATIVE o CLERK, cargar todas las ventas de la cooperativa
+    if ((user.role === 'COOPERATIVE' || user.role === 'CLERK') && user.cooperativeId) {
+      await saleStore.fetchPurchasesByCooperative(user.cooperativeId)
+    } else {
+      // Si es CLIENT u otro rol, cargar solo sus propias compras
+      await saleStore.fetchPurchasesByUser(user.id)
+    }
   } catch (err: any) {
     notifyError(err.message || 'Error al cargar las ventas')
   } finally {
@@ -839,6 +847,12 @@ function getPassengerNames(tickets: any[]): string {
   return `${tickets[0].passengerName} +${tickets.length - 1}`
 }
 
+function getPassengerIdCards(tickets: any[]): string {
+  if (tickets.length === 0) return ''
+  if (tickets.length === 1) return tickets[0].passengerIdCard
+  return `${tickets[0].passengerIdCard} +${tickets.length - 1}`
+}
+
 function getPaymentIcon(method?: string): string {
   const icons: Record<string, string> = {
     'CASH': 'pi pi-money-bill',
@@ -860,6 +874,7 @@ function getPaymentLabel(method?: string): string {
 function getStatusLabel(status: string): string {
   const labels: Record<string, string> = {
     'PENDING': 'Pendiente',
+    'PAID': 'Pagada',
     'CONFIRMED': 'Confirmada',
     'CANCELLED': 'Cancelada',
     'EXPIRED': 'Expirada'
@@ -870,6 +885,7 @@ function getStatusLabel(status: string): string {
 function getStatusSeverity(status: string): 'success' | 'info' | 'warning' | 'danger' {
   const severities: Record<string, 'success' | 'info' | 'warning' | 'danger'> = {
     'PENDING': 'warning',
+    'PAID': 'success',
     'CONFIRMED': 'success',
     'CANCELLED': 'danger',
     'EXPIRED': 'info'

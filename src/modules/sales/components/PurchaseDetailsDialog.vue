@@ -53,7 +53,7 @@
             </div>
             <div class="info-item" v-if="purchase.clerkId">
               <label><i class="pi pi-user"></i> Vendedor:</label>
-              <span>{{ purchase.clerkId }}</span>
+              <span>{{ purchase.clerkName }}</span>
             </div>
           </div>
         </template>

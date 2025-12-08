@@ -329,6 +329,7 @@
                 <InputText
                   v-model="passengers[index]!.passengerName"
                   placeholder="Nombres y apellidos"
+                  maxlength="70"
                   :class="['w-full', { 'p-invalid': passengerErrors[index]?.passengerName }]"
                 />
                 <small v-if="passengerErrors[index]?.passengerName" class="field-error">{{ passengerErrors[index]?.passengerName }}</small>

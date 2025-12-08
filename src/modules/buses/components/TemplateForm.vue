@@ -26,6 +26,7 @@
               id="templateName"
               v-model="formData.name"
               placeholder="Ej: Premium 36 con baño"
+              maxlength="70"
               :class="{ 'p-invalid': errors.name }"
             />
             <small v-if="errors.name" class="p-error">{{ errors.name }}</small>
@@ -37,6 +38,7 @@
               id="description"
               v-model="formData.description"
               placeholder="Describe las características del template"
+              maxlength="150"
             />
           </div>
         </div>

@@ -23,13 +23,13 @@
         <div class="grid">
           <div class="col">
             <label class="label">Nombre de la Cooperativa <span class="required">*</span></label>
-            <InputText v-model="form.name" placeholder="Ej. Transportes Unidos" />
+            <InputText v-model="form.name" placeholder="Ej. Transportes Unidos" maxlength="70" />
             <small class="field-error" v-if="errors.name">{{ errors.name }}</small>
           </div>
 
           <div class="col">
             <label class="label">Información de Contacto (email) <span class="required">*</span></label>
-            <InputText v-model="form.email" placeholder="Ej. contacto@unidos.com" />
+            <InputText v-model="form.email" placeholder="Ej. contacto@unidos.com" maxlength="70" />
             <small class="field-error" v-if="errors.email">{{ errors.email }}</small>
           </div>
 
@@ -47,7 +47,7 @@
 
           <div class="col-full">
             <label class="label">Dirección <span class="required">*</span></label>
-            <InputText v-model="form.address" placeholder="Ej. Av. Principal 123" />
+            <InputText v-model="form.address" placeholder="Ej. Av. Principal 123" maxlength="70" />
             <small class="field-error" v-if="errors.address">{{ errors.address }}</small>
           </div>
         </div>
@@ -159,7 +159,8 @@ const form = reactive<CreateCooperativePayload>({
 const errors = reactive<Record<string, string | null>>({})
 
 const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
-const hexColorRegex = /^#([A-Fa-f0-9]{6})$/
+// Aceptar colores con o sin # (el ColorPicker puede devolver sin #)
+const hexColorRegex = /^#?([A-Fa-f0-9]{6})$/
 const phoneRegex = /^\d{10}$/
 
 const submitLabel = computed(() => (props.model ? 'Guardar cambios' : 'Crear Cooperativa'))
@@ -253,10 +254,10 @@ function validate(): boolean {
   }
 
   errors.primaryColor = form.primaryColor && !hexColorRegex.test(form.primaryColor)
-    ? 'Formato de color invalido (#RRGGBB)'
+    ? 'Formato de color invalido (RRGGBB)'
     : null
   errors.secondaryColor = form.secondaryColor && !hexColorRegex.test(form.secondaryColor)
-    ? 'Formato de color invalido (#RRGGBB)'
+    ? 'Formato de color invalido (RRGGBB)'
     : null
 
   const isValid = Object.values(errors).every(v => v === null)
@@ -331,6 +332,17 @@ onBeforeUnmount(() => {
 
 function handleSubmit() {
   if (!validate()) return
+  
+  // Normalizar colores para asegurar formato #RRGGBB
+  const normalizeColor = (color: string | null): string | null => {
+    if (!color) return null
+    // Si el color no empieza con #, agregarlo
+    if (!color.startsWith('#')) {
+      return `#${color}`
+    }
+    return color
+  }
+  
   const payload: CreateCooperativePayload = {
     name: form.name,
     ruc: form.ruc,
@@ -338,14 +350,38 @@ function handleSubmit() {
     email: form.email,
     phone: form.phone,
     logo: form.logo || null,
-    primaryColor: form.primaryColor || null,
-    secondaryColor: form.secondaryColor || null,
+    primaryColor: normalizeColor(form.primaryColor),
+    secondaryColor: normalizeColor(form.secondaryColor),
     active: form.active ?? true,
   }
   console.log('[CooperativeForm] handleSubmit -> payload:', payload, 'file:', !!logoFile.value)
   // If we have a File, emit it as second arg to allow multipart submission
   emit('submit', payload, logoFile.value || undefined)
+  
+  // Resetear el formulario después de crear (no en edición)
+  if (!props.model) {
+    resetForm()
+  }
+  
   visibleLocal.value = false
+}
+
+function resetForm() {
+  form.name = ''
+  form.ruc = ''
+  form.address = ''
+  form.email = ''
+  form.phone = ''
+  form.logo = null
+  form.primaryColor = '#1976d2'
+  form.secondaryColor = '#f5f5f5'
+  form.active = false
+  logoPreview.value = null
+  logoFile.value = null
+  // Limpiar errores
+  Object.keys(errors).forEach(key => {
+    errors[key] = null
+  })
 }
 
 watch(() => props.model?.logo, v => {
@@ -354,17 +390,7 @@ watch(() => props.model?.logo, v => {
 // When `model` changes (edit open), populate the reactive form fields
 watch(() => props.model, (m) => {
     if (!m) {
-    form.name = ''
-    form.ruc = ''
-    form.address = ''
-    form.email = ''
-    form.phone = ''
-    form.logo = null
-      form.primaryColor = '#1976d2'
-      form.secondaryColor = '#f5f5f5'
-      form.active = false
-    logoPreview.value = null
-    logoFile.value = null
+    resetForm()
     return
   }
 

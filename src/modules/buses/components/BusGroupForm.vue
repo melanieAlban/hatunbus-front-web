@@ -65,6 +65,7 @@
             id="groupName"
             v-model="formData.name"
             placeholder="Ej: Flota VIP Norte"
+            maxlength="70"
             :class="{ 'p-invalid': errors.name }"
           />
           <small v-if="errors.name" class="p-error">{{ errors.name }}</small>
