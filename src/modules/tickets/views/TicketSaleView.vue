@@ -343,6 +343,8 @@
                   placeholder="1234567890"
                   maxlength="10"
                   :class="['w-full', { 'p-invalid': passengerErrors[index]?.passengerIdCard }]"
+                  @keypress="onlyNumbers"
+                  @paste="onPasteNumbers($event, index, 'passengerIdCard')"
                 />
                 <small v-if="passengerErrors[index]?.passengerIdCard" class="field-error">{{ passengerErrors[index]?.passengerIdCard }}</small>
               </div>
@@ -384,6 +386,8 @@
                   placeholder="0987654321"
                   maxlength="10"
                   :class="['w-full', { 'p-invalid': passengerErrors[index]?.passengerPhone }]"
+                  @keypress="onlyNumbers"
+                  @paste="onPasteNumbers($event, index, 'passengerPhone')"
                 />
                 <small v-if="passengerErrors[index]?.passengerPhone" class="field-error">{{ passengerErrors[index]?.passengerPhone }}</small>
               </div>
@@ -948,7 +952,21 @@ const paymentMethods = [
 const BASE_PRICE = 15.00
 
 // Precio base dinámico - usar el de la ruta seleccionada o el valor por defecto
-const routeBasePrice = computed(() => selectedRoute.value?.basePrice || BASE_PRICE)
+const routeBasePrice = computed(() => {
+  const price = selectedRoute.value?.basePrice
+  // Asegurar que el precio sea un número válido mayor a 0
+  if (price && typeof price === 'number' && price > 0) {
+    return price
+  }
+  // Si viene como string (BigDecimal serializado), convertirlo
+  if (price && typeof price === 'string') {
+    const parsed = parseFloat(price)
+    if (!isNaN(parsed) && parsed > 0) {
+      return parsed
+    }
+  }
+  return BASE_PRICE
+})
 
 async function loadCities() {
   loadingCities.value = true
@@ -1097,32 +1115,34 @@ async function selectTrip(trip: TripSummary) {
   routeStops.value = []
   selectedRoute.value = null
   
-  // Cargar stops y precio de la ruta
-  try {
-    const routeId = trip.frequencySegment?.routeId || trip.routeId
-    console.log('routeId extraído:', routeId)
+  // Cargar stops y precio de la ruta (por separado para que un error no afecte al otro)
+  const routeId = trip.frequencySegment?.routeId || trip.routeId
+  console.log('routeId extraído:', routeId)
+  
+  if (routeId) {
+    console.log('Cargando información de la ruta:', routeId)
     
-    if (routeId) {
-      console.log('Cargando información de la ruta:', routeId)
-      
-      // Cargar stops y detalles de la ruta en paralelo
-      const [stops, route] = await Promise.all([
-        ticketService.getRouteStops(routeId),
-        ticketService.getRouteById(routeId)
-      ])
-      
-      routeStops.value = stops
+    // Cargar detalles de la ruta (precio base) - CRÍTICO para el subtotal
+    try {
+      const route = await ticketService.getRouteById(routeId)
       selectedRoute.value = route
-      
-      console.log('Stops cargados:', stops.length, stops)
       console.log('Ruta cargada:', route)
       console.log('Precio base de la ruta:', route.basePrice)
-    } else {
-      console.warn('No se encontró routeId en el trip seleccionado')
-      console.warn('Trip keys:', Object.keys(trip))
+    } catch (err) {
+      console.error('Error al cargar detalles de la ruta:', err)
     }
-  } catch (err) {
-    console.error('Error al cargar información de la ruta:', err)
+    
+    // Cargar stops de la ruta (para selección de origen/destino)
+    try {
+      const stops = await ticketService.getRouteStops(routeId)
+      routeStops.value = stops
+      console.log('Stops cargados:', stops.length, stops)
+    } catch (err) {
+      console.error('Error al cargar paradas de la ruta:', err)
+    }
+  } else {
+    console.warn('No se encontró routeId en el trip seleccionado')
+    console.warn('Trip keys:', Object.keys(trip))
   }
   
   onTripChange()
@@ -1231,10 +1251,51 @@ function syncPassengerErrorsWithPassengers() {
 
 watch(passengers, () => {
   syncPassengerErrorsWithPassengers()
+  // Sanitizar campos de cédula y teléfono (solo números)
+  passengers.value.forEach((passenger) => {
+    if (passenger) {
+      if (passenger.passengerIdCard) {
+        const sanitizedId = passenger.passengerIdCard.replace(/\D/g, '')
+        if (sanitizedId !== passenger.passengerIdCard) {
+          passenger.passengerIdCard = sanitizedId
+        }
+      }
+      if (passenger.passengerPhone) {
+        const sanitizedPhone = passenger.passengerPhone.replace(/\D/g, '')
+        if (sanitizedPhone !== passenger.passengerPhone) {
+          passenger.passengerPhone = sanitizedPhone
+        }
+      }
+    }
+  })
   if (passengersValidated.value) {
     validatePassengersSection()
   }
 }, { deep: true })
+
+// Prevenir entrada de letras - solo permitir números
+function onlyNumbers(event: KeyboardEvent) {
+  const char = event.key
+  if (!/^\d$/.test(char)) {
+    event.preventDefault()
+  }
+}
+
+// Manejar pegado - solo permitir números
+function onPasteNumbers(event: ClipboardEvent, index: number, field: 'passengerIdCard' | 'passengerPhone') {
+  event.preventDefault()
+  const pastedText = event.clipboardData?.getData('text') || ''
+  const numbersOnly = pastedText.replace(/\D/g, '')
+  const passenger = passengers.value[index]
+  if (passenger) {
+    const currentValue = passenger[field] || ''
+    const input = event.target as HTMLInputElement
+    const start = input.selectionStart || 0
+    const end = input.selectionEnd || 0
+    const newValue = currentValue.substring(0, start) + numbersOnly + currentValue.substring(end)
+    passenger[field] = newValue.slice(0, 10)
+  }
+}
 
 function isValidEcuadorianId(id: string): boolean {
   if (!cedulaRegex.test(id)) return false
@@ -1386,7 +1447,9 @@ function getSeatPrice(seatCode: string): number {
   // Find seat in availability to get additional price
   const seat = seatAvailability.value.find(s => s.seatCode === seatCode)
   const additionalPrice = seat?.additionalPrice || 0
-  return routeBasePrice.value + additionalPrice
+  const basePrice = routeBasePrice.value
+  console.log('getSeatPrice:', { seatCode, basePrice, additionalPrice, selectedRoute: selectedRoute.value?.basePrice })
+  return basePrice + additionalPrice
 }
 
 function calculateSubtotal(): number {
@@ -1461,7 +1524,7 @@ function updateLastSaleTotals() {
 }
 
 watch(
-  [selectedSeats, passengers, seatAvailability],
+  [selectedSeats, passengers, seatAvailability, selectedRoute],
   () => updateLastSaleTotals(),
   { deep: true, immediate: true }
 )
@@ -1484,11 +1547,11 @@ function validatePassengersSection(): boolean {
 
     const idCard = passenger?.passengerIdCard?.trim() || ''
     if (!idCard) {
-      errorsForPassenger.passengerIdCard = 'La c�dula es obligatoria'
+      errorsForPassenger.passengerIdCard = 'La cedula es obligatoria'
     } else if (!cedulaRegex.test(idCard)) {
-      errorsForPassenger.passengerIdCard = 'La c�dula debe tener 10 d�gitos'
+      errorsForPassenger.passengerIdCard = 'La cedula debe tener 10 digitos'
     } else if (!isValidEcuadorianId(idCard)) {
-      errorsForPassenger.passengerIdCard = 'La c�dula ecuatoriana no es v�lida'
+      errorsForPassenger.passengerIdCard = 'La cedula ecuatoriana no es valida'
     }
 
     if (!passenger?.passengerType) {
@@ -1497,12 +1560,12 @@ function validatePassengersSection(): boolean {
 
     const email = passenger?.passengerEmail?.trim()
     if (email && !emailRegex.test(email)) {
-      errorsForPassenger.passengerEmail = 'Email inv�lido'
+      errorsForPassenger.passengerEmail = 'Email invalido'
     }
 
     const phone = passenger?.passengerPhone?.trim()
     if (phone && !phoneRegex.test(phone)) {
-      errorsForPassenger.passengerPhone = 'Tel�fono inv�lido'
+      errorsForPassenger.passengerPhone = 'Telefono invalido'
     }
 
     if (Object.keys(errorsForPassenger).length > 0) {
