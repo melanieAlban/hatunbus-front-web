@@ -197,7 +197,7 @@ function getRealSeatCount(template: any): number {
     return template.seatCount
   }
   if (!template || !template.seatConfiguration) return template?.seatCount || 0
-  return Object.values(template.seatConfiguration).filter(v => ['NORMAL','VIP','SEMI_BED','BED'].includes(v)).length
+  return Object.values(template.seatConfiguration).filter(v => ['NORMAL','VIP','SEMI_BED','BED'].includes(v as string)).length
 }
 
 const props = defineProps<{
@@ -384,7 +384,7 @@ function openBusDetail(bus: any) {
 async function toggleBusStatus(bus: any) {
   try {
     const target = bus.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'
-    await busService.changeStatus(bus.id, target)
+    await busService.changeStatus(bus.id, target as any)
     
     // Actualizar el array forzando reactividad
     const gbIdx = groupBuses.value.findIndex((x: any) => x.id === bus.id)

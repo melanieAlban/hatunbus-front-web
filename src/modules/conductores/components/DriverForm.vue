@@ -90,14 +90,14 @@ const emit = defineEmits<{
   (e: 'cancel'): void
 }>()
 
-const form = reactive<CreateDriverPayload>({
+const form = reactive<CreateDriverPayload & { active?: boolean }>({
   userId: props.model?.userId || '',
   cooperativeId: props.model?.cooperativeId || '',
   licenseNumber: props.model?.licenseNumber || '',
   licenseType: props.model?.licenseType || null,
   issueDate: props.model?.issueDate || null,
   expirationDate: props.model?.expirationDate || null,
-  active: props.model?.active ?? true
+  active: (props.model as any)?.active ?? true
 })
 
 const licenseTypeOptions = [

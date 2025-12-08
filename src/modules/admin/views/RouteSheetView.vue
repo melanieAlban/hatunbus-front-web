@@ -285,7 +285,7 @@ async function generateRouteSheet() {
       startDate: formatDateForApi(wizardStartDate.value),
       busGroupId: selectedGroupId.value!,
       frequencies: wizardStore.orderedChain.map(freq => ({
-        frequencyId: freq.id,
+        frequencyId: String(freq.id),
         operatingDays: undefined
       }))
     }

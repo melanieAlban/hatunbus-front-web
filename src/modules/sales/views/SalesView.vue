@@ -368,7 +368,7 @@ const filteredPurchases = computed(() => {
 // Confirmados = compras con status PAID o CONFIRMED (ambos son ventas pagadas)
 const confirmedCount = computed(() => 
   filteredPurchases.value.filter(p => 
-    p.status === 'PAID' || p.status === 'CONFIRMED'
+    (p.status as string) === 'PAID' || (p.status as string) === 'CONFIRMED'
   ).length
 )
 

@@ -175,7 +175,7 @@ async function loadContext() {
     busGroups.value = groups
     availableFrequencies.value = freqs.map(f => ({
       ...f,
-      name: f.name || getFrequencyLabel(f),
+      name: getFrequencyLabel(f),
     }))
   } catch (err: any) {
     notifyError('Error', err?.response?.data?.message || 'No se pudo cargar el contexto del wizard')
@@ -226,7 +226,7 @@ async function handleGenerateRouteSheet() {
       startDate: formatDate(startDate.value),
       busGroupId: selectedBusGroupId.value,
       frequencies: wizard.orderedChain.map(freq => ({
-        frequencyId: freq.id,
+        frequencyId: String(freq.id),
         operatingDays: undefined
       }))
     }
@@ -262,9 +262,11 @@ function getFrequencyLabel(freq: FrequencyDto): string {
     const sorted = [...freq.segments].sort((a, b) => (a.segmentOrder || 0) - (b.segmentOrder || 0))
     const first = sorted[0]
     const last = sorted[sorted.length - 1]
-    return `${first.routeOrigin || 'Origen'} → ${last.routeDestination || 'Destino'}`
+    if (first && last) {
+      return `${first.routeOrigin || 'Origen'} → ${last.routeDestination || 'Destino'}`
+    }
   }
-  return freq.name || 'Frecuencia'
+  return 'Frecuencia'
 }
 
 function resetAll() {

@@ -203,8 +203,8 @@ function getFrequencyRouteLabel(freq: FrequencyWithSegmentsDto): string {
     (a.segmentOrder || 0) - (b.segmentOrder || 0)
   )
 
-  const origin = sorted[0].routeOrigin || 'Origen'
-  const destination = sorted[sorted.length - 1].routeDestination || 'Destino'
+  const origin = sorted[0]?.routeOrigin || 'Origen'
+  const destination = sorted[sorted.length - 1]?.routeDestination || 'Destino'
 
   return `${origin} → ${destination}`
 }

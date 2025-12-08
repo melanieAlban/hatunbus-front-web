@@ -257,10 +257,7 @@ async function createUser(payload: any) {
               issueDate: dp.issueDate,
               expirationDate: dp.expirationDate,
               cooperativeId: dp.cooperativeId || updatedUser.cooperativeId || userPayload.cooperativeId || null,
-              active: typeof dp.active === 'boolean'
-                ? dp.active
-                : (typeof userPayload.active === 'boolean' ? userPayload.active : true),
-            })
+            } as any)
             console.log('[DriversView] driver create completed')
           }
           }

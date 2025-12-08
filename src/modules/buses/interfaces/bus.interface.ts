@@ -21,7 +21,6 @@ export interface BusDto {
   driverId: string
   driverName?: string | null
   driverLicenseNumber?: string | null
-  busTemplateId?: string | null
   plate: string
   chassisBrand: string
   chassisNumber?: string | null

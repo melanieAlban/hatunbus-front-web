@@ -1,13 +1,13 @@
 <template>
   <div class="reports-page">
     <TabView :activeIndex="activeTab" @tab-change="onTabChange">
-      <TabPanel header="Reporte de Pasajeros">
+      <TabPanel value="passengers" header="Reporte de Pasajeros">
         <PassengerReport />
       </TabPanel>
-      <TabPanel header="Gastos de Buses">
+      <TabPanel value="buses" header="Gastos de Buses">
         <BusExpensesReport />
       </TabPanel>
-      <TabPanel header="Reporte de Conductores">
+      <TabPanel value="drivers" header="Reporte de Conductores">
         <DriverReport />
       </TabPanel>
     </TabView>

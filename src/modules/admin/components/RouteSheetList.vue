@@ -569,7 +569,7 @@ function buildMatrixFromDetails(
       };
     }
 
-    rows.push({ label, meta, type: "TRIP", cells, deactivated: freq.deactivated });
+    rows.push({ label, meta, type: "TRIP", cells, deactivated: (freq as any).deactivated });
   }
 
   const paradaCells: Record<string, { type: string; buses: number[] }> = {};

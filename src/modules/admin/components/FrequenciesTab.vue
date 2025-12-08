@@ -294,7 +294,7 @@ async function loadFrequencies() {
     frequencies.value = await listAllFrequenciesByCooperative(props.cooperativeId)
   } catch (err: any) {
     error.value = err.response?.data?.message || 'Error al cargar frecuencias'
-    notifyError('Error', error.value)
+    notifyError('Error', error.value || 'Error al cargar frecuencias')
   } finally {
     loading.value = false
   }

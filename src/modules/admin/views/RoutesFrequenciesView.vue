@@ -21,14 +21,14 @@
 
     <template v-else>
       <TabView>
-        <TabPanel header="Frecuencias">
+        <TabPanel value="frequencies" header="Frecuencias">
           <FrequenciesTab
             ref="frequenciesTabRef"
             :cooperative-id="selectedCooperativeId"
             @create-frequency="openFrequencyDialog()"
           />
         </TabPanel>
-        <TabPanel header="Rutas">
+        <TabPanel value="routes" header="Rutas">
           <div class="routes-toolbar">
             <InputText
               v-model="routeSearch"
